@@ -8,7 +8,8 @@ type TopBarProps = {
     | "armstrong"
     | "hofenbitzer"
     | "hofenbitzerCasual"
-    | "hofenbitzerSleeve";
+    | "hofenbitzerWideSleeve"
+    | "hofenbitzerTightSleeve";
   onShare: () => void;
   onExport: () => void;
   isShareCopied: boolean;
@@ -40,10 +41,24 @@ const patternOptions = [
     href: "/hofenbitzer-casual",
   },
   {
-    key: "hofenbitzerSleeve" as const,
+    key: "hofenbitzerWideSleeve" as const,
     label: "Hofenbitzer's Wide Basic Sleeve",
     href: "/hofenbitzer-sleeve",
   },
+  {
+    key: "hofenbitzerTightSleeve" as const,
+    label: "Hofenbitzer's Tight Basic Sleeve",
+    href: "/hofenbitzer-tight-sleeve",
+  },
+];
+
+const almostReadyOptions = [
+  "Hofenbitzer's Bodice with Hip Gap",
+  "Hofenbitzer's Standard Trouser Pattern",
+];
+
+const nextInLineOptions = [
+  "Hofenbitzer's Bodice without Hip Gap (Coming Soon)",
 ];
 
 export function TopBar({
@@ -79,6 +94,20 @@ export function TopBar({
                 {option.label}
               </option>
             ))}
+            <optgroup label="ALMOST READY">
+              {almostReadyOptions.map((label, index) => (
+                <option key={`almost-ready-${index}`} value={`almost-ready-${index}`} disabled>
+                  {label}
+                </option>
+              ))}
+            </optgroup>
+            <optgroup label="NEXT IN LINE">
+              {nextInLineOptions.map((label, index) => (
+                <option key={`next-in-line-${index}`} value={`next-in-line-${index}`} disabled>
+                  {label}
+                </option>
+              ))}
+            </optgroup>
           </select>
         </div>
       </div>

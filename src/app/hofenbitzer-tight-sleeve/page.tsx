@@ -3,29 +3,29 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { TopBar } from "@/components/layout/TopBar";
 import { PatternCanvas, type CanvasInstanceScene } from "@/components/canvas/PatternCanvas";
-import { HofenbitzerWideBasicSleeveDraftsPanel } from "@/components/panels/HofenbitzerWideBasicSleeveDraftsPanel";
-import { HofenbitzerWideBasicSleeveMeasurementsPanel } from "@/components/panels/HofenbitzerWideBasicSleeveMeasurementsPanel";
-import { buildScene } from "@/patterns/hofenbitzerWideBasicSleeve/engine";
+import { HofenbitzerTightBasicSleeveDraftsPanel } from "@/components/panels/HofenbitzerTightBasicSleeveDraftsPanel";
+import { HofenbitzerTightBasicSleeveMeasurementsPanel } from "@/components/panels/HofenbitzerTightBasicSleeveMeasurementsPanel";
+import { buildScene } from "@/patterns/hofenbitzerTightBasicSleeve/engine";
 import { exportSvg } from "@/lib/exportSvg";
 import {
   mergeEffectiveMeasurements,
   selectProjectState,
-  useHofenbitzerWideBasicSleeveStore,
-} from "@/lib/hofenbitzerWideBasicSleeveStore";
-import { decodeHofenbitzerWideBasicSleeveProjectState } from "@/lib/share/hofenbitzerWideBasicSleeveDecode";
-import { encodeHofenbitzerWideBasicSleeveProjectState } from "@/lib/share/hofenbitzerWideBasicSleeveEncode";
+  useHofenbitzerTightBasicSleeveStore,
+} from "@/lib/hofenbitzerTightBasicSleeveStore";
+import { decodeHofenbitzerTightBasicSleeveProjectState } from "@/lib/share/hofenbitzerTightBasicSleeveDecode";
+import { encodeHofenbitzerTightBasicSleeveProjectState } from "@/lib/share/hofenbitzerTightBasicSleeveEncode";
 
-export default function HofenbitzerWideBasicSleevePage() {
+export default function HofenbitzerTightBasicSleevePage() {
   const hasHydratedFromQuery = useRef(false);
   const svgRef = useRef<SVGSVGElement | null>(null);
   const [shareCopied, setShareCopied] = useState(false);
 
-  const base = useHofenbitzerWideBasicSleeveStore((state) => state.base);
-  const instances = useHofenbitzerWideBasicSleeveStore((state) => state.instances);
-  const ui = useHofenbitzerWideBasicSleeveStore((state) => state.ui);
-  const hydrateFromProject = useHofenbitzerWideBasicSleeveStore((state) => state.hydrateFromProject);
-  const setUiToggle = useHofenbitzerWideBasicSleeveStore((state) => state.setUiToggle);
-  const setLineStrokeWidth = useHofenbitzerWideBasicSleeveStore((state) => state.setLineStrokeWidth);
+  const base = useHofenbitzerTightBasicSleeveStore((state) => state.base);
+  const instances = useHofenbitzerTightBasicSleeveStore((state) => state.instances);
+  const ui = useHofenbitzerTightBasicSleeveStore((state) => state.ui);
+  const hydrateFromProject = useHofenbitzerTightBasicSleeveStore((state) => state.hydrateFromProject);
+  const setUiToggle = useHofenbitzerTightBasicSleeveStore((state) => state.setUiToggle);
+  const setLineStrokeWidth = useHofenbitzerTightBasicSleeveStore((state) => state.setLineStrokeWidth);
 
   const scenes = useMemo<CanvasInstanceScene[]>(() => {
     return instances.map((instance) => {
@@ -56,7 +56,7 @@ export default function HofenbitzerWideBasicSleevePage() {
       return;
     }
 
-    const decoded = decodeHofenbitzerWideBasicSleeveProjectState(encoded);
+    const decoded = decodeHofenbitzerTightBasicSleeveProjectState(encoded);
     if (decoded) {
       hydrateFromProject(decoded);
     }
@@ -68,15 +68,15 @@ export default function HofenbitzerWideBasicSleevePage() {
     }
 
     exportSvg(svgRef.current, {
-      filename: "patternstudio-hofenbitzer-wide-basic-sleeve.svg",
+      filename: "patternstudio-hofenbitzer-tight-basic-sleeve.svg",
       selectedOnly: ui.exportSelectedOnly,
       selectedInstanceId: ui.selectedInstanceId,
     });
   };
 
   const handleShare = useCallback(async () => {
-    const state = selectProjectState(useHofenbitzerWideBasicSleeveStore.getState());
-    const encoded = encodeHofenbitzerWideBasicSleeveProjectState(state);
+    const state = selectProjectState(useHofenbitzerTightBasicSleeveStore.getState());
+    const encoded = encodeHofenbitzerTightBasicSleeveProjectState(state);
     const url = `${window.location.origin}${window.location.pathname}?s=${encoded}`;
 
     try {
@@ -92,7 +92,7 @@ export default function HofenbitzerWideBasicSleevePage() {
   return (
     <div className="flex min-h-screen flex-col bg-slate-100 text-slate-900">
       <TopBar
-        activePattern="hofenbitzerWideSleeve"
+        activePattern="hofenbitzerTightSleeve"
         onShare={handleShare}
         onExport={handleExport}
         isShareCopied={shareCopied}
@@ -104,8 +104,8 @@ export default function HofenbitzerWideBasicSleevePage() {
         <aside className="w-full shrink-0 border-b border-slate-200 bg-slate-50 lg:w-[520px] lg:border-b-0 lg:border-r xl:w-[560px]">
           <div className="h-full overflow-y-auto p-4 lg:p-5">
             <div className="space-y-4">
-              <HofenbitzerWideBasicSleeveMeasurementsPanel />
-              <HofenbitzerWideBasicSleeveDraftsPanel />
+              <HofenbitzerTightBasicSleeveMeasurementsPanel />
+              <HofenbitzerTightBasicSleeveDraftsPanel />
             </div>
           </div>
         </aside>
