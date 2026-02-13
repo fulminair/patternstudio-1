@@ -281,7 +281,7 @@ export function PatternCanvas({
                         y={label.y}
                         fill={label.color ?? "currentColor"}
                         stroke="none"
-                        fontSize={0.3}
+                        fontSize={0.5}
                         fontWeight={400}
                         opacity={1}
                         fontFamily="Arial, Helvetica, sans-serif"
