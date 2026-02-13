@@ -13,6 +13,12 @@ export type CanvasInstanceScene = {
   scene: PatternScene;
 };
 
+export type CanvasCleanupConfig = {
+  mode: "traceWithPathFilter" | "patternOnly";
+  tracePointOrder?: readonly string[];
+  keepPathIds?: readonly string[];
+};
+
 type PatternCanvasProps = {
   scenes: CanvasInstanceScene[];
   selectedInstanceId: string | null;
@@ -24,6 +30,7 @@ type PatternCanvasProps = {
   onToggleLabels: (checked: boolean) => void;
   onToggleMarkers: (checked: boolean) => void;
   onToggleCleanUp: (checked: boolean) => void;
+  cleanupConfig?: CanvasCleanupConfig;
   onSvgReady?: (svg: SVGSVGElement | null) => void;
 };
 
@@ -60,7 +67,7 @@ const viewBoxFromBounds = (bounds: PatternBounds): string =>
 const boundsKey = (bounds: PatternBounds): string =>
   `${bounds.minX}:${bounds.minY}:${bounds.maxX}:${bounds.maxY}`;
 
-const CLEANUP_POINT_ORDER = [
+const DEFAULT_TRACE_CLEANUP_POINT_ORDER = [
   "1",
   "5",
   "d",
@@ -83,9 +90,7 @@ const CLEANUP_POINT_ORDER = [
   "1",
 ] as const;
 
-const CLEANUP_POINT_SET = new Set<string>(CLEANUP_POINT_ORDER);
-
-const CLEANUP_KEEP_PATH_IDS = new Set<string>([
+const DEFAULT_TRACE_CLEANUP_PATH_IDS = [
   "back-neck-curve",
   "front-neck-curve",
   "back-armhole-curve",
@@ -113,33 +118,45 @@ const CLEANUP_KEEP_PATH_IDS = new Set<string>([
   "waist-seam-front-dart-left-to-c",
   "waist-seam-side-right-to-c",
   "waist-seam-side-left-to-c",
-]);
+];
+
+const DEFAULT_TRACE_PATH_SEGMENTS = [
+  ["1", "5"],
+  ["c", "21"],
+  ["20", "26", "27", "30"],
+] as const;
 
 const buildCleanupTracePath = (points: PatternScene["points"]): string | null => {
   // In cleanup mode we trace the requested key points and rely on dedicated curve paths for neck/armhole arcs.
-  const cbKeys = ["1", "5"] as const;
-  const cfKeys = ["c", "21"] as const;
-  const frontKeys = ["20", "26", "27", "30"] as const;
-
-  const allNeeded = [...cbKeys, ...cfKeys, ...frontKeys];
-  for (const key of allNeeded) {
-    if (!points[key]) {
-      return null;
+  for (const segment of DEFAULT_TRACE_PATH_SEGMENTS) {
+    if (segment.length < 2) {
+      continue;
+    }
+    for (const key of segment) {
+      if (!points[key]) {
+        return null;
+      }
     }
   }
 
   const toCommand = (keys: readonly string[]): string => {
     const [first, ...rest] = keys;
     const start = points[first];
+    if (!start) {
+      return "";
+    }
     const commands = [`M ${start.x} ${start.y}`];
     for (const key of rest) {
       const p = points[key];
+      if (!p) {
+        return "";
+      }
       commands.push(`L ${p.x} ${p.y}`);
     }
     return commands.join(" ");
   };
 
-  return [toCommand(cbKeys), toCommand(cfKeys), toCommand(frontKeys)].join(" ");
+  return DEFAULT_TRACE_PATH_SEGMENTS.map((segment) => toCommand(segment)).join(" ");
 };
 
 export function PatternCanvas({
@@ -153,6 +170,7 @@ export function PatternCanvas({
   onToggleLabels,
   onToggleMarkers,
   onToggleCleanUp,
+  cleanupConfig,
   onSvgReady,
 }: PatternCanvasProps) {
   const svgRef = useRef<SVGSVGElement | null>(null);
@@ -280,6 +298,17 @@ export function PatternCanvas({
     return 0.26;
   };
 
+  const cleanupMode = cleanupConfig?.mode ?? "traceWithPathFilter";
+  const cleanupPointOrder = cleanupConfig?.tracePointOrder ?? DEFAULT_TRACE_CLEANUP_POINT_ORDER;
+  const cleanupPointSet = useMemo(
+    () => new Set(cleanupPointOrder),
+    [cleanupPointOrder],
+  );
+  const cleanupPathIdSet = useMemo(
+    () => new Set(cleanupConfig?.keepPathIds ?? DEFAULT_TRACE_CLEANUP_PATH_IDS),
+    [cleanupConfig?.keepPathIds],
+  );
+
   return (
     <div className="relative h-full w-full overflow-hidden rounded-xl border border-slate-200 bg-gradient-to-br from-slate-50 to-slate-100">
       <svg
@@ -306,18 +335,24 @@ export function PatternCanvas({
             .filter((instance) => instance.visible)
             .map((instance) => {
               const cleanupTraceD = showCleanUp
-                ? buildCleanupTracePath(instance.scene.points)
+                ? cleanupMode === "traceWithPathFilter"
+                  ? buildCleanupTracePath(instance.scene.points)
+                  : null
                 : null;
 
-              const visiblePaths = showCleanUp
-                ? instance.scene.paths.filter((path) => CLEANUP_KEEP_PATH_IDS.has(path.id))
-                : instance.scene.paths;
+              const visiblePaths = !showCleanUp
+                ? instance.scene.paths
+                : cleanupMode === "traceWithPathFilter"
+                  ? instance.scene.paths.filter((path) => cleanupPathIdSet.has(path.id))
+                  : instance.scene.paths.filter((path) => path.kind !== "construction");
 
-              const visibleMarkers = showCleanUp
-                ? instance.scene.markers.filter((marker) =>
-                    CLEANUP_POINT_SET.has(marker.id.replace(/^marker-/, "")),
-                  )
-                : instance.scene.markers;
+              const visibleMarkers = !showCleanUp
+                ? instance.scene.markers
+                : cleanupMode === "traceWithPathFilter"
+                  ? instance.scene.markers.filter((marker) =>
+                      cleanupPointSet.has(marker.id.replace(/^marker-/, "")),
+                    )
+                  : instance.scene.markers;
 
               return (
                 <g
@@ -350,7 +385,7 @@ export function PatternCanvas({
 
                   {showMarkers
                     ? visibleMarkers.map((marker) => {
-                        const markerText = marker.id.replace(/^marker-/, "");
+                        const markerText = marker.text ?? marker.id.replace(/^marker-/, "");
                         return (
                           <g key={`${instance.instanceId}-${marker.id}`}>
                             <circle

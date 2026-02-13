@@ -1,6 +1,10 @@
 "use client";
 
+import Link from "next/link";
+
 type TopBarProps = {
+  patternTitle: string;
+  activePattern: "aldrich" | "armstrong";
   onShare: () => void;
   onExport: () => void;
   isShareCopied: boolean;
@@ -11,6 +15,8 @@ type TopBarProps = {
 const iconClass = "h-4 w-4";
 
 export function TopBar({
+  patternTitle,
+  activePattern,
   onShare,
   onExport,
   isShareCopied,
@@ -24,8 +30,30 @@ export function TopBar({
           PatternStudio
         </div>
         <h1 className="text-sm font-semibold text-slate-800 sm:text-base">
-          Aldrich Close Fitting Bodice
+          {patternTitle}
         </h1>
+        <nav className="hidden items-center gap-1 rounded-md border border-slate-200 bg-slate-50 p-0.5 md:flex">
+          <Link
+            href="/"
+            className={`rounded px-2 py-1 text-xs font-medium ${
+              activePattern === "aldrich"
+                ? "bg-slate-900 text-white"
+                : "text-slate-600 hover:bg-slate-100"
+            }`}
+          >
+            Aldrich
+          </Link>
+          <Link
+            href="/armstrong"
+            className={`rounded px-2 py-1 text-xs font-medium ${
+              activePattern === "armstrong"
+                ? "bg-slate-900 text-white"
+                : "text-slate-600 hover:bg-slate-100"
+            }`}
+          >
+            Armstrong
+          </Link>
+        </nav>
       </div>
 
       <div className="flex items-center gap-2 sm:gap-3">

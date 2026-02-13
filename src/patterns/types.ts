@@ -68,6 +68,7 @@ export type PatternPath = {
   stroke: string;
   strokeWidth: number;
   dashed?: boolean;
+  kind?: "pattern" | "construction";
 };
 
 export type PatternLabel = {
@@ -85,6 +86,7 @@ export type PatternMarker = {
   y: number;
   r: number;
   color: string;
+  text?: string;
 };
 
 export type PatternBounds = {

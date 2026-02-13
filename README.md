@@ -1,6 +1,6 @@
 # PatternStudio
 
-PatternStudio is a Next.js web app that ports an Aldrich close-fitting bodice drafting workflow from Illustrator-style scripting into a live interactive SVG workspace.
+PatternStudio is a Next.js web app that ports bodice drafting workflows from Illustrator-style scripts into a live interactive SVG workspace.
 
 ## Run
 
@@ -11,6 +11,10 @@ npm run dev
 
 Open `http://localhost:3000`.
 
+Pattern routes:
+- Aldrich: `http://localhost:3000/`
+- Armstrong: `http://localhost:3000/armstrong`
+
 ## Build and lint
 
 ```bash
@@ -20,11 +24,14 @@ npm run build
 
 ## Architecture notes
 
-- `src/patterns/aldrichCloseFittingBodice/engine.ts`: Pure drafting engine (defaults, derived math, scene construction).
-- `src/patterns/types.ts`: Shared project, measurement, and scene types.
-- `src/lib/store.ts`: Zustand state for base measurements, instances, overrides, selection, and UI flags.
-- `src/components/panels/*`: Left-side controls (measurements, toggles, derived summary, instance overrides).
-- `src/components/canvas/PatternCanvas.tsx`: Live SVG rendering, pan/zoom via `d3-zoom`, grid/labels/markers controls.
+- `src/patterns/aldrichCloseFittingBodice/engine.ts`: Aldrich pure drafting engine.
+- `src/patterns/armstrongBodice/engine.ts`: Armstrong pure drafting engine.
+- `src/patterns/types.ts`: Shared SVG scene types.
+- `src/lib/store.ts`: Zustand state for Aldrich project/drafts.
+- `src/lib/armstrongStore.ts`: Zustand state for Armstrong project/drafts.
+- `src/components/panels/*`: Left-side controls for both routes.
+- `src/components/canvas/PatternCanvas.tsx`: Shared live SVG renderer, pan/zoom, grid/labels/markers, cleanup modes.
 - `src/lib/exportSvg.ts`: SVG export using `XMLSerializer`.
-- `src/lib/share/*`: Share URL encoding/decoding for project state hydration.
-- `scripts/aldrich_close_fitting_bodice_v1.jsx`: Stored Illustrator-style source reference.
+- `src/lib/share/*`: Share URL encode/decode for route-specific project hydration.
+- `scripts/aldrich_close_fitting_bodice_v1.jsx`: Aldrich Illustrator source reference.
+- `scripts/armstrong_bodice_draft_v1.jsx`: Armstrong Illustrator source reference.
