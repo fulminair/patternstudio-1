@@ -117,10 +117,11 @@ const CLEANUP_KEEP_PATH_IDS = new Set<string>([
 
 const buildCleanupTracePath = (points: PatternScene["points"]): string | null => {
   // In cleanup mode we trace the requested key points and rely on dedicated curve paths for neck/armhole arcs.
-  const lineKeys = ["1", "5", "d", "f", "e", "c", "21"] as const;
+  const cbKeys = ["1", "5"] as const;
+  const cfKeys = ["c", "21"] as const;
   const frontKeys = ["20", "26", "27", "30"] as const;
 
-  const allNeeded = [...lineKeys, ...frontKeys];
+  const allNeeded = [...cbKeys, ...cfKeys, ...frontKeys];
   for (const key of allNeeded) {
     if (!points[key]) {
       return null;
@@ -138,7 +139,7 @@ const buildCleanupTracePath = (points: PatternScene["points"]): string | null =>
     return commands.join(" ");
   };
 
-  return [toCommand(lineKeys), toCommand(frontKeys)].join(" ");
+  return [toCommand(cbKeys), toCommand(cfKeys), toCommand(frontKeys)].join(" ");
 };
 
 export function PatternCanvas({
