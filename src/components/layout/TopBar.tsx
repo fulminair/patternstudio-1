@@ -1,15 +1,15 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import {
+  AUTHOR_ORDER,
+  AVAILABLE_PATTERNS,
+  UPCOMING_PATTERNS,
+  type ActivePatternId,
+} from "@/lib/patternCatalog";
 
 type TopBarProps = {
-  activePattern:
-    | "aldrich"
-    | "armstrong"
-    | "hofenbitzer"
-    | "hofenbitzerCasual"
-    | "hofenbitzerWideSleeve"
-    | "hofenbitzerTightSleeve";
+  activePattern: ActivePatternId;
   onShare: () => void;
   onExport: () => void;
   isShareCopied: boolean;
@@ -18,48 +18,6 @@ type TopBarProps = {
 };
 
 const iconClass = "h-4 w-4";
-
-const patternOptions = [
-  {
-    key: "aldrich" as const,
-    label: "Aldrich's Close Fitting Bodice",
-    href: "/",
-  },
-  {
-    key: "armstrong" as const,
-    label: "Armstrong's Bodice",
-    href: "/armstrong",
-  },
-  {
-    key: "hofenbitzer" as const,
-    label: "Hofenbitzer's Basic Skirt",
-    href: "/hofenbitzer",
-  },
-  {
-    key: "hofenbitzerCasual" as const,
-    label: "Hofenbitzer's Casual Bodice",
-    href: "/hofenbitzer-casual",
-  },
-  {
-    key: "hofenbitzerWideSleeve" as const,
-    label: "Hofenbitzer's Wide Basic Sleeve",
-    href: "/hofenbitzer-sleeve",
-  },
-  {
-    key: "hofenbitzerTightSleeve" as const,
-    label: "Hofenbitzer's Tight Basic Sleeve",
-    href: "/hofenbitzer-tight-sleeve",
-  },
-];
-
-const almostReadyOptions = [
-  "Hofenbitzer's Bodice with Hip Gap",
-  "Hofenbitzer's Standard Trouser Pattern",
-];
-
-const nextInLineOptions = [
-  "Hofenbitzer's Bodice without Hip Gap (Coming Soon)",
-];
 
 export function TopBar({
   activePattern,
@@ -71,33 +29,36 @@ export function TopBar({
 }: TopBarProps) {
   const router = useRouter();
   const handlePatternChange = (value: string) => {
-    const next = patternOptions.find((option) => option.key === value);
+    const next = AVAILABLE_PATTERNS.find((option) => option.id === value);
     if (next) {
       router.push(next.href);
     }
   };
 
+  const statusLabel = (status: "almostReady" | "comingSoon"): string =>
+    status === "almostReady" ? "Almost ready" : "Coming soon";
+
   const renderPatternOptions = () => (
     <>
-      {patternOptions.map((option) => (
-        <option key={option.key} value={option.key}>
-          {option.label}
-        </option>
-      ))}
-      <optgroup label="ALMOST READY">
-        {almostReadyOptions.map((label, index) => (
-          <option key={`almost-ready-${index}`} value={`almost-ready-${index}`} disabled>
-            {label}
-          </option>
-        ))}
-      </optgroup>
-      <optgroup label="NEXT IN LINE">
-        {nextInLineOptions.map((label, index) => (
-          <option key={`next-in-line-${index}`} value={`next-in-line-${index}`} disabled>
-            {label}
-          </option>
-        ))}
-      </optgroup>
+      {AUTHOR_ORDER.map((author) => {
+        const availableForAuthor = AVAILABLE_PATTERNS.filter((pattern) => pattern.author === author);
+        const upcomingForAuthor = UPCOMING_PATTERNS.filter((pattern) => pattern.author === author);
+
+        return (
+          <optgroup key={author} label={author.toUpperCase()}>
+            {availableForAuthor.map((pattern) => (
+              <option key={pattern.id} value={pattern.id}>
+                {`${pattern.label} (${pattern.units})`}
+              </option>
+            ))}
+            {upcomingForAuthor.map((pattern) => (
+              <option key={pattern.id} value={pattern.id} disabled>
+                {`${pattern.label} (${statusLabel(pattern.status)}, ${pattern.units})`}
+              </option>
+            ))}
+          </optgroup>
+        );
+      })}
     </>
   );
 
