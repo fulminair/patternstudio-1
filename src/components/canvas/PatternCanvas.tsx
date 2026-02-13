@@ -184,6 +184,16 @@ export function PatternCanvas({
     zoomSelectionRef.current.call(zoomRef.current.transform, zoomIdentity);
   };
 
+  const markerTextSize = (text: string): number => {
+    if (text.length <= 1) {
+      return 0.32;
+    }
+    if (text.length === 2) {
+      return 0.3;
+    }
+    return 0.26;
+  };
+
   return (
     <div className="relative h-full w-full overflow-hidden rounded-xl border border-slate-200 bg-gradient-to-br from-slate-50 to-slate-100">
       <svg
@@ -229,33 +239,38 @@ export function PatternCanvas({
                 ))}
 
                 {showMarkers
-                  ? instance.scene.markers.map((marker) => (
-                      <g key={`${instance.instanceId}-${marker.id}`}>
-                        <circle
-                          cx={marker.x}
-                          cy={marker.y}
-                          r={marker.r}
-                          fill={marker.color}
-                          stroke="white"
-                          strokeWidth={0.03}
-                          vectorEffect="non-scaling-stroke"
-                        />
-                        <text
-                          x={marker.x}
-                          y={marker.y}
-                          fill="white"
-                          stroke="none"
-                          textAnchor="middle"
-                          dominantBaseline="middle"
-                          pointerEvents="none"
-                          fontSize={Math.max(marker.r * 1.9, 0.6)}
-                          fontWeight={600}
-                          fontFamily="var(--font-geist-sans), 'Avenir Next', 'Segoe UI', sans-serif"
-                        >
-                          {marker.id.replace(/^marker-/, "")}
-                        </text>
-                      </g>
-                    ))
+                  ? instance.scene.markers.map((marker) => {
+                      const markerText = marker.id.replace(/^marker-/, "");
+                      return (
+                        <g key={`${instance.instanceId}-${marker.id}`}>
+                          <circle
+                            cx={marker.x}
+                            cy={marker.y}
+                            r={marker.r}
+                            fill={marker.color}
+                            stroke="white"
+                            strokeWidth={0.02}
+                            vectorEffect="non-scaling-stroke"
+                          />
+                          <text
+                            x={marker.x}
+                            y={marker.y}
+                            dy="0.02em"
+                            fill="white"
+                            stroke="none"
+                            textAnchor="middle"
+                            dominantBaseline="middle"
+                            alignmentBaseline="middle"
+                            pointerEvents="none"
+                            fontSize={markerTextSize(markerText)}
+                            fontWeight={400}
+                            fontFamily="Arial, Helvetica, sans-serif"
+                          >
+                            {markerText}
+                          </text>
+                        </g>
+                      );
+                    })
                   : null}
 
                 {showLabels && labelTargetId === instance.instanceId
@@ -265,11 +280,12 @@ export function PatternCanvas({
                         x={label.x}
                         y={label.y}
                         fill={label.color ?? "currentColor"}
-                        fontSize={0.6}
-                        fontWeight={100}
-                        opacity={0.88}
-                        fontFamily="var(--font-geist-sans), 'Avenir Next', 'Segoe UI', sans-serif"
-                        letterSpacing="0.01em"
+                        stroke="none"
+                        fontSize={0.3}
+                        fontWeight={400}
+                        opacity={1}
+                        fontFamily="Arial, Helvetica, sans-serif"
+                        letterSpacing="0"
                         transform={
                           label.rotation
                             ? `rotate(${label.rotation} ${label.x} ${label.y})`

@@ -16,7 +16,7 @@ import type {
 } from "@/patterns/types";
 
 const INSTANCE_COLORS = [
-  "#0f766e",
+  "#111111",
   "#b45309",
   "#1d4ed8",
   "#be123c",
