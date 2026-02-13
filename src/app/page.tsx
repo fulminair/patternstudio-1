@@ -106,9 +106,11 @@ export default function HomePage() {
             showGrid={ui.showGrid}
             showLabels={ui.showLabels}
             showMarkers={ui.showMarkers}
+            showCleanUp={ui.showCleanUp}
             onToggleGrid={(checked) => setUiToggle("showGrid", checked)}
             onToggleLabels={(checked) => setUiToggle("showLabels", checked)}
             onToggleMarkers={(checked) => setUiToggle("showMarkers", checked)}
+            onToggleCleanUp={(checked) => setUiToggle("showCleanUp", checked)}
             onSvgReady={(element) => {
               svgRef.current = element;
             }}

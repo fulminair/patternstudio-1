@@ -47,6 +47,7 @@ export type ProjectUiState = {
   showGrid: boolean;
   showLabels: boolean;
   showMarkers: boolean;
+  showCleanUp: boolean;
   exportSelectedOnly: boolean;
 };
 

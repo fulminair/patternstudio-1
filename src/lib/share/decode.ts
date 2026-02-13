@@ -94,7 +94,8 @@ const parseUi = (input: unknown, instances: PatternInstance[]): ProjectUiState =
     selectedInstanceId: instances[0]?.id ?? null,
     showGrid: true,
     showLabels: true,
-    showMarkers: false,
+    showMarkers: true,
+    showCleanUp: false,
     exportSelectedOnly: false,
   };
 
@@ -113,6 +114,8 @@ const parseUi = (input: unknown, instances: PatternInstance[]): ProjectUiState =
     showGrid: typeof input.showGrid === "boolean" ? input.showGrid : fallback.showGrid,
     showLabels: typeof input.showLabels === "boolean" ? input.showLabels : fallback.showLabels,
     showMarkers: typeof input.showMarkers === "boolean" ? input.showMarkers : fallback.showMarkers,
+    showCleanUp:
+      typeof input.showCleanUp === "boolean" ? input.showCleanUp : fallback.showCleanUp,
     exportSelectedOnly:
       typeof input.exportSelectedOnly === "boolean"
         ? input.exportSelectedOnly

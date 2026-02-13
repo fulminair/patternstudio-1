@@ -52,6 +52,7 @@ const defaultUi: ProjectUiState = {
   showGrid: true,
   showLabels: true,
   showMarkers: true,
+  showCleanUp: false,
   exportSelectedOnly: false,
 };
 

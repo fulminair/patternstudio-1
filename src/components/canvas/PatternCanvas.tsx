@@ -19,9 +19,11 @@ type PatternCanvasProps = {
   showGrid: boolean;
   showLabels: boolean;
   showMarkers: boolean;
+  showCleanUp: boolean;
   onToggleGrid: (checked: boolean) => void;
   onToggleLabels: (checked: boolean) => void;
   onToggleMarkers: (checked: boolean) => void;
+  onToggleCleanUp: (checked: boolean) => void;
   onSvgReady?: (svg: SVGSVGElement | null) => void;
 };
 
@@ -58,15 +60,90 @@ const viewBoxFromBounds = (bounds: PatternBounds): string =>
 const boundsKey = (bounds: PatternBounds): string =>
   `${bounds.minX}:${bounds.minY}:${bounds.maxX}:${bounds.maxY}`;
 
+const CLEANUP_POINT_ORDER = [
+  "1",
+  "5",
+  "d",
+  "f",
+  "e",
+  "c",
+  "21",
+  "20",
+  "26",
+  "27",
+  "30",
+  "31",
+  "b",
+  "32",
+  "a",
+  "16",
+  "11",
+  "13",
+  "9",
+  "1",
+] as const;
+
+const CLEANUP_POINT_SET = new Set<string>(CLEANUP_POINT_ORDER);
+
+const CLEANUP_KEEP_PATH_IDS = new Set<string>([
+  "back-neck-curve",
+  "front-neck-curve",
+  "back-armhole-curve",
+  "front-armhole-curve",
+  "front-neck-dart-left-20-26",
+  "front-neck-dart-right-27-26",
+  "back-shoulder-dart",
+  "back-shoulder-right-connect",
+  "back-shoulder-line-9-11",
+  "front-shoulder-line-27-30",
+  "front-waist-dart-left",
+  "front-waist-dart-right",
+  "back-waist-dart-left",
+  "back-waist-dart-right",
+  "back-side-waist-dart",
+  "front-side-waist-dart",
+  "back-waist-line-5-side",
+  "front-waist-line-c-side",
+]);
+
+const buildCleanupTracePath = (points: PatternScene["points"]): string | null => {
+  // In cleanup mode we trace the requested key points and rely on dedicated curve paths for neck/armhole arcs.
+  const lineKeys = ["1", "5", "d", "f", "e", "c", "21"] as const;
+  const frontKeys = ["20", "26", "27", "30"] as const;
+  const backKeys = ["32", "a", "16", "11", "13", "9"] as const;
+
+  const allNeeded = [...lineKeys, ...frontKeys, ...backKeys];
+  for (const key of allNeeded) {
+    if (!points[key]) {
+      return null;
+    }
+  }
+
+  const toCommand = (keys: readonly string[]): string => {
+    const [first, ...rest] = keys;
+    const start = points[first];
+    const commands = [`M ${start.x} ${start.y}`];
+    for (const key of rest) {
+      const p = points[key];
+      commands.push(`L ${p.x} ${p.y}`);
+    }
+    return commands.join(" ");
+  };
+
+  return [toCommand(lineKeys), toCommand(frontKeys), toCommand(backKeys)].join(" ");
+};
+
 export function PatternCanvas({
   scenes,
   selectedInstanceId,
   showGrid,
   showLabels,
   showMarkers,
+  showCleanUp,
   onToggleGrid,
   onToggleLabels,
   onToggleMarkers,
+  onToggleCleanUp,
   onSvgReady,
 }: PatternCanvasProps) {
   const svgRef = useRef<SVGSVGElement | null>(null);
@@ -218,86 +295,111 @@ export function PatternCanvas({
 
           {scenes
             .filter((instance) => instance.visible)
-            .map((instance) => (
-              <g
-                key={instance.instanceId}
-                data-instance-id={instance.instanceId}
-                data-instance-name={instance.name}
-                style={{ color: instance.color }}
-                fill="none"
-                stroke={instance.color}
-              >
-                {instance.scene.paths.map((path) => (
-                  <path
-                    key={`${instance.instanceId}-${path.id}`}
-                    d={path.d}
-                    stroke={path.stroke}
-                    strokeWidth={Math.max(path.strokeWidth * 1.6, 0.52)}
-                    strokeDasharray={path.dashed ? "0.9 0.6" : undefined}
-                    vectorEffect="non-scaling-stroke"
-                  />
-                ))}
+            .map((instance) => {
+              const cleanupTraceD = showCleanUp
+                ? buildCleanupTracePath(instance.scene.points)
+                : null;
 
-                {showMarkers
-                  ? instance.scene.markers.map((marker) => {
-                      const markerText = marker.id.replace(/^marker-/, "");
-                      return (
-                        <g key={`${instance.instanceId}-${marker.id}`}>
-                          <circle
-                            cx={marker.x}
-                            cy={marker.y}
-                            r={marker.r}
-                            fill={marker.color}
-                            stroke="white"
-                            strokeWidth={0.02}
-                            vectorEffect="non-scaling-stroke"
-                          />
-                          <text
-                            x={marker.x}
-                            y={marker.y}
-                            dy="0.02em"
-                            fill="white"
-                            stroke="none"
-                            textAnchor="middle"
-                            dominantBaseline="middle"
-                            alignmentBaseline="middle"
-                            pointerEvents="none"
-                            fontSize={markerTextSize(markerText)}
-                            fontWeight={400}
-                            fontFamily="Arial, Helvetica, sans-serif"
-                          >
-                            {markerText}
-                          </text>
-                        </g>
-                      );
-                    })
-                  : null}
+              const visiblePaths = showCleanUp
+                ? instance.scene.paths.filter((path) => CLEANUP_KEEP_PATH_IDS.has(path.id))
+                : instance.scene.paths;
 
-                {showLabels && labelTargetId === instance.instanceId
-                  ? instance.scene.labels.map((label) => (
-                      <text
-                        key={`${instance.instanceId}-${label.id}`}
-                        x={label.x}
-                        y={label.y}
-                        fill={label.color ?? "currentColor"}
-                        stroke="none"
-                        fontSize={0.5}
-                        fontWeight={400}
-                        opacity={1}
-                        fontFamily="Arial, Helvetica, sans-serif"
-                        letterSpacing="0"
-                        transform={
-                          label.rotation
-                            ? `rotate(${label.rotation} ${label.x} ${label.y})`
-                            : undefined
-                        }
-                      >
-                        {label.text}
-                      </text>
-                    ))
-                  : null}
-              </g>
-            ))}
+              const visibleMarkers = showCleanUp
+                ? instance.scene.markers.filter((marker) =>
+                    CLEANUP_POINT_SET.has(marker.id.replace(/^marker-/, "")),
+                  )
+                : instance.scene.markers;
+
+              return (
+                <g
+                  key={instance.instanceId}
+                  data-instance-id={instance.instanceId}
+                  data-instance-name={instance.name}
+                  style={{ color: instance.color }}
+                  fill="none"
+                  stroke={instance.color}
+                >
+                  {cleanupTraceD ? (
+                    <path
+                      d={cleanupTraceD}
+                      stroke="currentColor"
+                      strokeWidth={0.56}
+                      vectorEffect="non-scaling-stroke"
+                    />
+                  ) : null}
+
+                  {visiblePaths.map((path) => (
+                    <path
+                      key={`${instance.instanceId}-${path.id}`}
+                      d={path.d}
+                      stroke={path.stroke}
+                      strokeWidth={Math.max(path.strokeWidth * 1.6, 0.52)}
+                      strokeDasharray={showCleanUp ? undefined : path.dashed ? "0.9 0.6" : undefined}
+                      vectorEffect="non-scaling-stroke"
+                    />
+                  ))}
+
+                  {showMarkers
+                    ? visibleMarkers.map((marker) => {
+                        const markerText = marker.id.replace(/^marker-/, "");
+                        return (
+                          <g key={`${instance.instanceId}-${marker.id}`}>
+                            <circle
+                              cx={marker.x}
+                              cy={marker.y}
+                              r={marker.r}
+                              fill={marker.color}
+                              stroke="white"
+                              strokeWidth={0.02}
+                              vectorEffect="non-scaling-stroke"
+                            />
+                            <text
+                              x={marker.x}
+                              y={marker.y}
+                              dy="0.02em"
+                              fill="white"
+                              stroke="none"
+                              textAnchor="middle"
+                              dominantBaseline="middle"
+                              alignmentBaseline="middle"
+                              pointerEvents="none"
+                              fontSize={markerTextSize(markerText)}
+                              fontWeight={400}
+                              fontFamily="Arial, Helvetica, sans-serif"
+                            >
+                              {markerText}
+                            </text>
+                          </g>
+                        );
+                      })
+                    : null}
+
+                  {showLabels && labelTargetId === instance.instanceId
+                    ? instance.scene.labels.map((label) => (
+                        <text
+                          key={`${instance.instanceId}-${label.id}`}
+                          x={label.x}
+                          y={label.y}
+                          fill={label.color ?? "currentColor"}
+                          stroke="none"
+                          fontSize={0.5}
+                          fontWeight={400}
+                          opacity={1}
+                          fontFamily="Arial, Helvetica, sans-serif"
+                          letterSpacing="0"
+                          transform={
+                            label.rotation
+                              ? `rotate(${label.rotation} ${label.x} ${label.y})`
+                              : undefined
+                          }
+                        >
+                          {label.text}
+                        </text>
+                      ))
+                    : null}
+                </g>
+              );
+            })}
         </g>
       </svg>
 
@@ -360,6 +462,15 @@ export function PatternCanvas({
             onChange={(event) => onToggleMarkers(event.target.checked)}
           />
           Markers
+        </label>
+        <label className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            className="h-3.5 w-3.5 accent-slate-900"
+            checked={showCleanUp}
+            onChange={(event) => onToggleCleanUp(event.target.checked)}
+          />
+          Clean up
         </label>
       </div>
     </div>
