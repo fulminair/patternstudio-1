@@ -237,24 +237,23 @@ export function PatternCanvas({
                           r={marker.r}
                           fill={marker.color}
                           stroke="white"
-                          strokeWidth={0.02}
+                          strokeWidth={0.03}
                           vectorEffect="non-scaling-stroke"
                         />
-                        {labelTargetId === instance.instanceId ? (
-                          <text
-                            x={marker.x}
-                            y={marker.y}
-                            fill="white"
-                            fontSize={Math.max(marker.r * 1.7, 0.42)}
-                            fontWeight={500}
-                            textAnchor="middle"
-                            dominantBaseline="middle"
-                            fontFamily="var(--font-geist-sans), 'Avenir Next', 'Segoe UI', sans-serif"
-                            pointerEvents="none"
-                          >
-                            {marker.id.replace(/^marker-/, "")}
-                          </text>
-                        ) : null}
+                        <text
+                          x={marker.x}
+                          y={marker.y}
+                          fill="white"
+                          stroke="none"
+                          textAnchor="middle"
+                          dominantBaseline="middle"
+                          pointerEvents="none"
+                          fontSize={Math.max(marker.r * 1.9, 0.6)}
+                          fontWeight={600}
+                          fontFamily="var(--font-geist-sans), 'Avenir Next', 'Segoe UI', sans-serif"
+                        >
+                          {marker.id.replace(/^marker-/, "")}
+                        </text>
                       </g>
                     ))
                   : null}

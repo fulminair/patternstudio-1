@@ -51,7 +51,7 @@ const defaultUi: ProjectUiState = {
   selectedInstanceId: initialInstance.id,
   showGrid: true,
   showLabels: true,
-  showMarkers: false,
+  showMarkers: true,
   exportSelectedOnly: false,
 };
 
