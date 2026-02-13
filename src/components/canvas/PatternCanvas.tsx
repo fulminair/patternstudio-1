@@ -230,13 +230,32 @@ export function PatternCanvas({
 
                 {showMarkers
                   ? instance.scene.markers.map((marker) => (
-                      <circle
-                        key={`${instance.instanceId}-${marker.id}`}
-                        cx={marker.x}
-                        cy={marker.y}
-                        r={marker.r}
-                        fill={marker.color}
-                      />
+                      <g key={`${instance.instanceId}-${marker.id}`}>
+                        <circle
+                          cx={marker.x}
+                          cy={marker.y}
+                          r={marker.r}
+                          fill={marker.color}
+                          stroke="white"
+                          strokeWidth={0.02}
+                          vectorEffect="non-scaling-stroke"
+                        />
+                        {labelTargetId === instance.instanceId ? (
+                          <text
+                            x={marker.x}
+                            y={marker.y}
+                            fill="white"
+                            fontSize={Math.max(marker.r * 1.7, 0.42)}
+                            fontWeight={500}
+                            textAnchor="middle"
+                            dominantBaseline="middle"
+                            fontFamily="var(--font-geist-sans), 'Avenir Next', 'Segoe UI', sans-serif"
+                            pointerEvents="none"
+                          >
+                            {marker.id.replace(/^marker-/, "")}
+                          </text>
+                        ) : null}
+                      </g>
                     ))
                   : null}
 
@@ -248,7 +267,7 @@ export function PatternCanvas({
                         y={label.y}
                         fill={label.color ?? "currentColor"}
                         fontSize={0.6}
-                        fontWeight={400}
+                        fontWeight={100}
                         opacity={0.88}
                         fontFamily="var(--font-geist-sans), 'Avenir Next', 'Segoe UI', sans-serif"
                         letterSpacing="0.01em"

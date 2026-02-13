@@ -749,7 +749,7 @@ export const buildScene = (measurements: EffectiveMeasurements): PatternScene =>
       id: `marker-${id}`,
       x: p.x,
       y: p.y,
-      r: 0.24,
+      r: 0.45,
       color: "currentColor",
     });
   }
