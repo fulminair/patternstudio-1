@@ -1,56 +1,76 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { computeDerived } from "@/patterns/armstrongBodice/engine";
 import type { ArmstrongBaseMeasurements } from "@/patterns/armstrongBodice/types";
 import { useArmstrongStore } from "@/lib/armstrongStore";
 
 type NumericMeasurementKey = Exclude<keyof ArmstrongBaseMeasurements, "bustCup">;
 
-type MeasurementRow = {
+type MeasurementField = {
+  key: NumericMeasurementKey;
   label: string;
-  front?: NumericMeasurementKey;
-  back?: NumericMeasurementKey;
+  min: number;
+  max: number;
+  step: number;
 };
 
-const measurementRows: MeasurementRow[] = [
-  { label: "1. Full Length", front: "fullLength", back: "fullLengthBack" },
-  { label: "2. Across Shoulder", front: "acrossShoulder", back: "acrossShoulderBack" },
+const measurementFields: MeasurementField[] = [
+  { key: "fullLength", label: "Full Length (Front)", min: 8, max: 40, step: 0.0625 },
+  { key: "fullLengthBack", label: "Full Length (Back)", min: 8, max: 40, step: 0.0625 },
+  { key: "acrossShoulder", label: "Across Shoulder (Front)", min: 3, max: 20, step: 0.0625 },
+  { key: "acrossShoulderBack", label: "Across Shoulder (Back)", min: 3, max: 20, step: 0.0625 },
   {
-    label: "3. Centre Front/Back Length",
-    front: "centreFrontLength",
-    back: "centreFrontLengthBack",
+    key: "centreFrontLength",
+    label: "Centre Front Length",
+    min: 6,
+    max: 30,
+    step: 0.0625,
   },
-  { label: "4. Bust/Back Arc", front: "bustArc", back: "bustArcBack" },
-  { label: "5. Shoulder Slope", front: "shoulderSlope", back: "shoulderSlopeBack" },
-  { label: "6. Bust Depth", front: "bustDepth" },
-  { label: "7. Shoulder Length", front: "shoulderLength", back: "shoulderLengthBack" },
-  { label: "8. Bust Span", front: "bustSpan", back: "bustSpanBack" },
-  { label: "9. Across Chest/Back", front: "acrossChest", back: "acrossChestBack" },
-  { label: "10. Dart Placement", front: "dartPlacement", back: "dartPlacementBack" },
-  { label: "11. New Strap", front: "newStrap" },
-  { label: "12. Side Length", front: "sideLength", back: "sideLengthBack" },
-  { label: "13. Waist Arc", front: "waistArc", back: "waistArcBack" },
-  { label: "14. Back Neck", back: "backNeck" },
+  {
+    key: "centreFrontLengthBack",
+    label: "Centre Back Length",
+    min: 6,
+    max: 30,
+    step: 0.0625,
+  },
+  { key: "bustArc", label: "Bust Arc (Front)", min: 3, max: 24, step: 0.0625 },
+  { key: "bustArcBack", label: "Bust Arc (Back)", min: 3, max: 24, step: 0.0625 },
+  { key: "shoulderSlope", label: "Shoulder Slope (Front)", min: 8, max: 40, step: 0.0625 },
+  { key: "shoulderSlopeBack", label: "Shoulder Slope (Back)", min: 8, max: 40, step: 0.0625 },
+  { key: "bustDepth", label: "Bust Depth", min: 3, max: 20, step: 0.0625 },
+  { key: "shoulderLength", label: "Shoulder Length (Front)", min: 2, max: 14, step: 0.0625 },
+  { key: "shoulderLengthBack", label: "Shoulder Length (Back)", min: 2, max: 14, step: 0.0625 },
+  { key: "bustSpan", label: "Bust Span (Front)", min: 2, max: 14, step: 0.0625 },
+  { key: "bustSpanBack", label: "Bust Span (Back)", min: 2, max: 14, step: 0.0625 },
+  { key: "acrossChest", label: "Across Chest (Front)", min: 2, max: 20, step: 0.0625 },
+  { key: "acrossChestBack", label: "Across Chest (Back)", min: 2, max: 20, step: 0.0625 },
+  { key: "dartPlacement", label: "Dart Placement (Front)", min: 0, max: 12, step: 0.0625 },
+  { key: "dartPlacementBack", label: "Dart Placement (Back)", min: 0, max: 12, step: 0.0625 },
+  { key: "newStrap", label: "New Strap", min: 8, max: 40, step: 0.0625 },
+  { key: "sideLength", label: "Side Length (Front)", min: 2, max: 20, step: 0.0625 },
+  { key: "sideLengthBack", label: "Side Length (Back)", min: 2, max: 20, step: 0.0625 },
+  { key: "waistArc", label: "Waist Arc (Front)", min: 2, max: 20, step: 0.0625 },
+  { key: "waistArcBack", label: "Waist Arc (Back)", min: 2, max: 20, step: 0.0625 },
+  { key: "backNeck", label: "Back Neck", min: 1, max: 12, step: 0.0625 },
 ];
 
-const formatInches = (value: number): string => `${(Math.round(value * 100) / 100).toFixed(2)} in`;
-
-type DebouncedNumberInputProps = {
+type DebouncedNumberFieldProps = {
   value: number;
+  label: string;
   min: number;
   max: number;
   step: number;
   onCommit: (next: number) => void;
 };
 
-function DebouncedNumberInput({
+function DebouncedNumberField({
   value,
+  label,
   min,
   max,
   step,
   onCommit,
-}: DebouncedNumberInputProps) {
+}: DebouncedNumberFieldProps) {
   const [draft, setDraft] = useState(String(value));
   const commitRef = useRef(onCommit);
 
@@ -94,35 +114,22 @@ function DebouncedNumberInput({
   };
 
   return (
-    <input
-      type="number"
-      inputMode="decimal"
-      min={min}
-      max={max}
-      step={step}
-      value={draft}
-      onChange={(event) => setDraft(event.target.value)}
-      onBlur={onBlur}
-      className="w-full rounded-md border border-slate-300 px-2 py-1 text-xs text-slate-800 outline-none transition focus:border-slate-500"
-    />
-  );
-}
-
-function TableInputCell({
-  value,
-  onCommit,
-}: {
-  value: number;
-  onCommit: (next: number) => void;
-}) {
-  return (
-    <DebouncedNumberInput
-      value={value}
-      min={0}
-      max={60}
-      step={0.0625}
-      onCommit={onCommit}
-    />
+    <div className="rounded-md border border-slate-200 bg-white px-2 py-2">
+      <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-slate-600">
+        {label}
+      </label>
+      <input
+        type="number"
+        inputMode="decimal"
+        min={min}
+        max={max}
+        step={step}
+        value={draft}
+        onChange={(event) => setDraft(event.target.value)}
+        onBlur={onBlur}
+        className="w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm text-slate-800 outline-none transition focus:border-slate-500"
+      />
+    </div>
   );
 }
 
@@ -147,8 +154,6 @@ export function ArmstrongMeasurementsPanel() {
     };
   }, [base, selectedDraft]);
 
-  const derived = useMemo(() => computeDerived(selectedMeasurements), [selectedMeasurements]);
-
   const commitMeasurement = (key: keyof ArmstrongBaseMeasurements, value: number | string) => {
     if (!selectedDraft) {
       return;
@@ -158,10 +163,19 @@ export function ArmstrongMeasurementsPanel() {
 
   return (
     <section className="space-y-3">
+      <div className="rounded-md border border-slate-200 bg-white px-3 py-2 text-xs leading-relaxed text-slate-600">
+        <p className="font-semibold text-slate-700">Armstrong&apos;s Bodice</p>
+        <p>
+          All measurements are in inches. Defaults reference the size 12 block from Armstrong&apos;s
+          book - please have it handy when entering your own measurements. Convert fractional
+          values (1/2, 1/8, etc.) to decimals before entering them.
+        </p>
+      </div>
+
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-600">
-            Armstrong Measurements
+            Draft Measurements
           </h2>
           <p className="mt-0.5 text-xs text-slate-500">
             Editing: <span className="font-semibold text-slate-700">{selectedDraft?.name ?? "None"}</span>
@@ -178,13 +192,27 @@ export function ArmstrongMeasurementsPanel() {
         ) : null}
       </div>
 
-      <div className="grid grid-cols-1 gap-2 rounded-md border border-slate-200 bg-white p-2">
-        <div className="grid grid-cols-[1fr_auto] items-center gap-2 rounded-md border border-slate-200 bg-slate-50 px-2 py-1.5">
-          <label className="text-xs font-medium text-slate-700">Bust Cup</label>
+      <div className="grid grid-cols-2 gap-2 xl:grid-cols-3">
+        {measurementFields.map((field) => (
+          <DebouncedNumberField
+            key={`${selectedDraft?.id ?? "none"}-${field.key}`}
+            label={field.label}
+            value={selectedMeasurements[field.key]}
+            min={field.min}
+            max={field.max}
+            step={field.step}
+            onCommit={(next) => commitMeasurement(field.key, next)}
+          />
+        ))}
+
+        <div className="rounded-md border border-slate-200 bg-white px-2 py-2">
+          <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-slate-600">
+            Bust Cup
+          </label>
           <select
             value={selectedMeasurements.bustCup}
             onChange={(event) => commitMeasurement("bustCup", event.target.value)}
-            className="rounded-md border border-slate-300 bg-white px-2 py-1 text-xs text-slate-800 outline-none focus:border-slate-500"
+            className="w-full rounded-md border border-slate-300 bg-white px-2 py-1.5 text-sm text-slate-800 outline-none transition focus:border-slate-500"
           >
             <option value="A Cup">A Cup</option>
             <option value="B Cup">B Cup</option>
@@ -192,63 +220,8 @@ export function ArmstrongMeasurementsPanel() {
             <option value="D Cup">D Cup</option>
           </select>
         </div>
-
-        <div className="overflow-hidden rounded-md border border-slate-200">
-          <div className="grid grid-cols-[minmax(120px,1fr)_90px_90px] bg-slate-100 text-[11px] font-semibold uppercase tracking-wide text-slate-600">
-            <div className="px-2 py-1.5">Measurement (in)</div>
-            <div className="px-2 py-1.5 text-center">Front</div>
-            <div className="px-2 py-1.5 text-center">Back</div>
-          </div>
-          <div className="divide-y divide-slate-200">
-            {measurementRows.map((row) => (
-              <div
-                key={row.label}
-                className="grid grid-cols-[minmax(120px,1fr)_90px_90px] items-center bg-white"
-              >
-                <div className="px-2 py-1.5 text-[11px] text-slate-700">{row.label}</div>
-                <div className="px-2 py-1.5">
-                  {row.front ? (
-                    <TableInputCell
-                      value={selectedMeasurements[row.front]}
-                      onCommit={(next) => commitMeasurement(row.front as keyof ArmstrongBaseMeasurements, next)}
-                    />
-                  ) : (
-                    <div className="text-center text-xs text-slate-400">-</div>
-                  )}
-                </div>
-                <div className="px-2 py-1.5">
-                  {row.back ? (
-                    <TableInputCell
-                      value={selectedMeasurements[row.back]}
-                      onCommit={(next) => commitMeasurement(row.back as keyof ArmstrongBaseMeasurements, next)}
-                    />
-                  ) : (
-                    <div className="text-center text-xs text-slate-400">-</div>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
       </div>
 
-      <div className="rounded-md border border-slate-200 bg-slate-50 p-2">
-        <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-600">Summary</h3>
-        <dl className="mt-2 grid grid-cols-3 gap-2">
-          <div className="rounded border border-slate-200 bg-white px-2 py-1">
-            <dt className="text-[11px] text-slate-500">Cup Offset</dt>
-            <dd className="text-xs font-semibold text-slate-900">{formatInches(derived.bustCupOffset)}</dd>
-          </div>
-          <div className="rounded border border-slate-200 bg-white px-2 py-1">
-            <dt className="text-[11px] text-slate-500">Front Intake</dt>
-            <dd className="text-xs font-semibold text-slate-900">{formatInches(derived.frontWaistIntake)}</dd>
-          </div>
-          <div className="rounded border border-slate-200 bg-white px-2 py-1">
-            <dt className="text-[11px] text-slate-500">Back Intake</dt>
-            <dd className="text-xs font-semibold text-slate-900">{formatInches(derived.backWaistIntake)}</dd>
-          </div>
-        </dl>
-      </div>
     </section>
   );
 }

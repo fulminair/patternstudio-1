@@ -3,24 +3,28 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { TopBar } from "@/components/layout/TopBar";
 import { PatternCanvas, type CanvasInstanceScene } from "@/components/canvas/PatternCanvas";
-import { InstancesPanel } from "@/components/panels/InstancesPanel";
-import { MeasurementsPanel } from "@/components/panels/MeasurementsPanel";
-import { buildScene } from "@/patterns/aldrichCloseFittingBodice/engine";
+import { HofenbitzerDraftsPanel } from "@/components/panels/HofenbitzerDraftsPanel";
+import { HofenbitzerMeasurementsPanel } from "@/components/panels/HofenbitzerMeasurementsPanel";
+import { buildScene } from "@/patterns/hofenbitzerBasicSkirt/engine";
 import { exportSvg } from "@/lib/exportSvg";
-import { mergeEffectiveMeasurements, selectProjectState, usePatternStore } from "@/lib/store";
-import { decodeProjectState } from "@/lib/share/decode";
-import { encodeProjectState } from "@/lib/share/encode";
+import {
+  mergeEffectiveMeasurements,
+  selectProjectState,
+  useHofenbitzerStore,
+} from "@/lib/hofenbitzerStore";
+import { decodeHofenbitzerProjectState } from "@/lib/share/hofenbitzerDecode";
+import { encodeHofenbitzerProjectState } from "@/lib/share/hofenbitzerEncode";
 
-export default function HomePage() {
+export default function HofenbitzerPage() {
   const hasHydratedFromQuery = useRef(false);
   const svgRef = useRef<SVGSVGElement | null>(null);
   const [shareCopied, setShareCopied] = useState(false);
 
-  const base = usePatternStore((state) => state.base);
-  const instances = usePatternStore((state) => state.instances);
-  const ui = usePatternStore((state) => state.ui);
-  const hydrateFromProject = usePatternStore((state) => state.hydrateFromProject);
-  const setUiToggle = usePatternStore((state) => state.setUiToggle);
+  const base = useHofenbitzerStore((state) => state.base);
+  const instances = useHofenbitzerStore((state) => state.instances);
+  const ui = useHofenbitzerStore((state) => state.ui);
+  const hydrateFromProject = useHofenbitzerStore((state) => state.hydrateFromProject);
+  const setUiToggle = useHofenbitzerStore((state) => state.setUiToggle);
 
   const scenes = useMemo<CanvasInstanceScene[]>(() => {
     return instances.map((instance) => {
@@ -51,7 +55,7 @@ export default function HomePage() {
       return;
     }
 
-    const decoded = decodeProjectState(encoded);
+    const decoded = decodeHofenbitzerProjectState(encoded);
     if (decoded) {
       hydrateFromProject(decoded);
     }
@@ -63,14 +67,15 @@ export default function HomePage() {
     }
 
     exportSvg(svgRef.current, {
+      filename: "patternstudio-hofenbitzer-basic-skirt.svg",
       selectedOnly: ui.exportSelectedOnly,
       selectedInstanceId: ui.selectedInstanceId,
     });
   };
 
   const handleShare = useCallback(async () => {
-    const state = selectProjectState(usePatternStore.getState());
-    const encoded = encodeProjectState(state);
+    const state = selectProjectState(useHofenbitzerStore.getState());
+    const encoded = encodeHofenbitzerProjectState(state);
     const url = `${window.location.origin}${window.location.pathname}?s=${encoded}`;
 
     try {
@@ -86,7 +91,7 @@ export default function HomePage() {
   return (
     <div className="flex min-h-screen flex-col bg-slate-100 text-slate-900">
       <TopBar
-        activePattern="aldrich"
+        activePattern="hofenbitzer"
         onShare={handleShare}
         onExport={handleExport}
         isShareCopied={shareCopied}
@@ -98,8 +103,8 @@ export default function HomePage() {
         <aside className="w-full shrink-0 border-b border-slate-200 bg-slate-50 lg:w-[520px] lg:border-b-0 lg:border-r xl:w-[560px]">
           <div className="h-full overflow-y-auto p-4 lg:p-5">
             <div className="space-y-4">
-              <MeasurementsPanel />
-              <InstancesPanel />
+              <HofenbitzerMeasurementsPanel />
+              <HofenbitzerDraftsPanel />
             </div>
           </div>
         </aside>
@@ -112,6 +117,7 @@ export default function HomePage() {
             showLabels={ui.showLabels}
             showMarkers={ui.showMarkers}
             showCleanUp={ui.showCleanUp}
+            cleanupConfig={{ mode: "patternOnly" }}
             onToggleGrid={(checked) => setUiToggle("showGrid", checked)}
             onToggleLabels={(checked) => setUiToggle("showLabels", checked)}
             onToggleMarkers={(checked) => setUiToggle("showMarkers", checked)}

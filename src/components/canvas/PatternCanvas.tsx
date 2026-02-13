@@ -314,6 +314,7 @@ export function PatternCanvas({
       <svg
         ref={svgRef}
         viewBox={viewBoxFromBounds(paddedBounds)}
+        preserveAspectRatio="xMinYMin meet"
         className="h-full w-full cursor-grab select-none touch-none active:cursor-grabbing"
       >
         <g ref={viewportRef}>

@@ -149,6 +149,14 @@ export function MeasurementsPanel() {
 
   return (
     <section className="space-y-3">
+      <div className="rounded-md border border-slate-200 bg-white px-3 py-2 text-xs leading-relaxed text-slate-600">
+        <p className="font-semibold text-slate-700">Aldrich&apos;s Close Fitting Bodice</p>
+        <p>
+          All measurements are in centimetres. Defaults reference the size 12 block from
+          Aldrich&apos;s book - please have it handy when entering your own measurements.
+        </p>
+      </div>
+
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-600">Draft Measurements</h2>

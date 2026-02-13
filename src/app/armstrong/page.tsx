@@ -48,6 +48,10 @@ export default function ArmstrongPage() {
     const params = new URLSearchParams(window.location.search);
     const encoded = params.get("s");
     if (!encoded) {
+      setUiToggle("showGrid", true);
+      setUiToggle("showLabels", true);
+      setUiToggle("showMarkers", true);
+      setUiToggle("showCleanUp", false);
       return;
     }
 
@@ -55,7 +59,7 @@ export default function ArmstrongPage() {
     if (decoded) {
       hydrateFromProject(decoded);
     }
-  }, [hydrateFromProject]);
+  }, [hydrateFromProject, setUiToggle]);
 
   const handleExport = () => {
     if (!svgRef.current) {
@@ -87,7 +91,6 @@ export default function ArmstrongPage() {
   return (
     <div className="flex min-h-screen flex-col bg-slate-100 text-slate-900">
       <TopBar
-        patternTitle="Armstrong Bodice Draft"
         activePattern="armstrong"
         onShare={handleShare}
         onExport={handleExport}
@@ -96,9 +99,9 @@ export default function ArmstrongPage() {
         onToggleExportSelectedOnly={(checked) => setUiToggle("exportSelectedOnly", checked)}
       />
 
-      <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
-        <aside className="w-full shrink-0 border-b border-slate-200 bg-slate-50 lg:w-[560px] lg:border-b-0 lg:border-r xl:w-[610px]">
-          <div className="p-4 lg:p-5">
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden lg:flex-row">
+        <aside className="w-full shrink-0 border-b border-slate-200 bg-slate-50 lg:w-[520px] lg:border-b-0 lg:border-r xl:w-[560px]">
+          <div className="h-full overflow-y-auto p-4 lg:p-5">
             <div className="space-y-4">
               <ArmstrongMeasurementsPanel />
               <ArmstrongDraftsPanel />
@@ -106,7 +109,7 @@ export default function ArmstrongPage() {
           </div>
         </aside>
 
-        <main className="min-h-[60vh] flex-1 p-4">
+        <main className="min-h-[60vh] flex-1 overflow-hidden p-4 lg:min-h-0">
           <PatternCanvas
             scenes={scenes}
             selectedInstanceId={ui.selectedInstanceId}
