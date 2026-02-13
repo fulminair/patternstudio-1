@@ -21,6 +21,13 @@ const MEASUREMENT_KEYS: Array<keyof BaseMeasurements> = [
 const isObject = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null;
 
+const sanitizeLineStrokeWidth = (value: unknown, fallback: number): number => {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return fallback;
+  }
+  return Math.min(6, Math.max(0.1, Math.round(value * 100) / 100));
+};
+
 const parseBase = (input: unknown, defaults: BaseMeasurements): BaseMeasurements => {
   if (!isObject(input)) {
     return defaults;
@@ -97,6 +104,7 @@ const parseUi = (input: unknown, instances: PatternInstance[]): ProjectUiState =
     showMarkers: true,
     showCleanUp: false,
     exportSelectedOnly: false,
+    lineStrokeWidth: 1,
   };
 
   if (!isObject(input)) {
@@ -120,6 +128,7 @@ const parseUi = (input: unknown, instances: PatternInstance[]): ProjectUiState =
       typeof input.exportSelectedOnly === "boolean"
         ? input.exportSelectedOnly
         : fallback.exportSelectedOnly,
+    lineStrokeWidth: sanitizeLineStrokeWidth(input.lineStrokeWidth, fallback.lineStrokeWidth),
   };
 };
 

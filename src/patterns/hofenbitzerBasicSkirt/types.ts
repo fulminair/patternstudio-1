@@ -53,6 +53,7 @@ export type HofenbitzerProjectUiState = {
   showMarkers: boolean;
   showCleanUp: boolean;
   exportSelectedOnly: boolean;
+  lineStrokeWidth: number;
 };
 
 export type HofenbitzerProjectState = {

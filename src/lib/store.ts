@@ -54,6 +54,7 @@ const defaultUi: ProjectUiState = {
   showMarkers: true,
   showCleanUp: false,
   exportSelectedOnly: false,
+  lineStrokeWidth: 1,
 };
 
 const toEffectiveMeasurements = (
@@ -74,6 +75,15 @@ const toEffectiveMeasurements = (
 const sanitizeNumber = (value: number, fallback: number): number =>
   Number.isFinite(value) ? value : fallback;
 
+const sanitizeLineStrokeWidth = (value: number, fallback = 1): number => {
+  if (!Number.isFinite(value)) {
+    return fallback;
+  }
+  return Math.min(6, Math.max(0.1, Math.round(value * 100) / 100));
+};
+
+type UiBooleanKey = "showGrid" | "showLabels" | "showMarkers" | "showCleanUp" | "exportSelectedOnly";
+
 const normalizedToggleState = (closeWaistShaping: boolean, reducedDarting: boolean) => {
   if (reducedDarting) {
     return { closeWaistShaping: false, reducedDarting: true };
@@ -93,7 +103,8 @@ export type PatternStudioStore = ProjectState & {
     value: number | boolean | undefined,
   ) => void;
   resetOverrides: (id: string) => void;
-  setUiToggle: (key: Exclude<keyof ProjectUiState, "selectedInstanceId">, value: boolean) => void;
+  setUiToggle: (key: UiBooleanKey, value: boolean) => void;
+  setLineStrokeWidth: (value: number) => void;
   hydrateFromProject: (next: ProjectState) => void;
   getEffectiveMeasurements: (id: string) => EffectiveMeasurements | null;
   getSceneForInstance: (id: string) => PatternScene | null;
@@ -259,6 +270,15 @@ export const usePatternStore = create<PatternStudioStore>((set, get) => ({
     }));
   },
 
+  setLineStrokeWidth: (value) => {
+    set((state) => ({
+      ui: {
+        ...state.ui,
+        lineStrokeWidth: sanitizeLineStrokeWidth(value, state.ui.lineStrokeWidth),
+      },
+    }));
+  },
+
   hydrateFromProject: (next) => {
     set(() => {
       const baseToggles = normalizedToggleState(
@@ -303,6 +323,10 @@ export const usePatternStore = create<PatternStudioStore>((set, get) => ({
         ui: {
           ...defaultUi,
           ...next.ui,
+          lineStrokeWidth: sanitizeLineStrokeWidth(
+            Number(next.ui.lineStrokeWidth),
+            defaultUi.lineStrokeWidth,
+          ),
           selectedInstanceId: selectedExists ? next.ui.selectedInstanceId : normalizedInstances[0].id,
         },
       };

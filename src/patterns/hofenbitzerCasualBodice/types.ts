@@ -71,6 +71,7 @@ export type HofenbitzerCasualProjectUiState = {
   showMarkers: boolean;
   showCleanUp: boolean;
   exportSelectedOnly: boolean;
+  lineStrokeWidth: number;
 };
 
 export type HofenbitzerCasualProjectState = {

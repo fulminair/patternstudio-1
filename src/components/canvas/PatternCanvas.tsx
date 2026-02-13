@@ -27,10 +27,12 @@ type PatternCanvasProps = {
   showLabels: boolean;
   showMarkers: boolean;
   showCleanUp: boolean;
+  lineStrokeWidth: number;
   onToggleGrid: (checked: boolean) => void;
   onToggleLabels: (checked: boolean) => void;
   onToggleMarkers: (checked: boolean) => void;
   onToggleCleanUp: (checked: boolean) => void;
+  onLineStrokeWidthChange: (value: number) => void;
   cleanupConfig?: CanvasCleanupConfig;
   onSvgReady?: (svg: SVGSVGElement | null) => void;
 };
@@ -167,10 +169,12 @@ export function PatternCanvas({
   showLabels,
   showMarkers,
   showCleanUp,
+  lineStrokeWidth,
   onToggleGrid,
   onToggleLabels,
   onToggleMarkers,
   onToggleCleanUp,
+  onLineStrokeWidthChange,
   cleanupConfig,
   onSvgReady,
 }: PatternCanvasProps) {
@@ -179,6 +183,7 @@ export function PatternCanvas({
   const zoomRef = useRef<ZoomBehavior<SVGSVGElement, unknown> | null>(null);
   const zoomSelectionRef = useRef<ReturnType<typeof select<SVGSVGElement, unknown>> | null>(null);
   const [transformText, setTransformText] = useState<ZoomTransform>(zoomIdentity);
+  const [strokeWidthDraft, setStrokeWidthDraft] = useState(String(lineStrokeWidth));
 
   const targetScenes = useMemo(() => {
     const visible = scenes.filter((scene) => scene.visible);
@@ -225,6 +230,10 @@ export function PatternCanvas({
     onSvgReady?.(svgRef.current);
     return () => onSvgReady?.(null);
   }, [onSvgReady]);
+
+  useEffect(() => {
+    setStrokeWidthDraft(String(lineStrokeWidth));
+  }, [lineStrokeWidth]);
 
   useEffect(() => {
     const svgElement = svgRef.current;
@@ -297,6 +306,13 @@ export function PatternCanvas({
       return 0.3;
     }
     return 0.26;
+  };
+
+  const clampStrokeWidth = (value: number): number => {
+    if (!Number.isFinite(value)) {
+      return lineStrokeWidth;
+    }
+    return Math.min(6, Math.max(0.1, Math.round(value * 100) / 100));
   };
 
   const cleanupMode = cleanupConfig?.mode ?? "traceWithPathFilter";
@@ -376,7 +392,7 @@ export function PatternCanvas({
                     <path
                       d={cleanupTraceD}
                       stroke="currentColor"
-                      strokeWidth={0.8}
+                      strokeWidth={lineStrokeWidth}
                       vectorEffect="non-scaling-stroke"
                     />
                   ) : null}
@@ -386,7 +402,7 @@ export function PatternCanvas({
                       key={`${instance.instanceId}-${path.id}`}
                       d={path.d}
                       stroke={path.stroke}
-                      strokeWidth={0.8}
+                      strokeWidth={lineStrokeWidth}
                       strokeDasharray={showCleanUp ? undefined : path.dashed ? "16 9" : undefined}
                       vectorEffect="non-scaling-stroke"
                     />
@@ -525,6 +541,36 @@ export function PatternCanvas({
           />
           Clean up
         </label>
+
+        <div className="mt-1 border-t border-slate-200 pt-2">
+          <label className="mb-1 block text-[11px] font-medium text-slate-600">Stroke width</label>
+          <input
+            type="number"
+            min={0.1}
+            max={6}
+            step={0.1}
+            value={strokeWidthDraft}
+            onChange={(event) => {
+              const next = event.target.value;
+              setStrokeWidthDraft(next);
+              const parsed = Number(next);
+              if (Number.isFinite(parsed)) {
+                onLineStrokeWidthChange(clampStrokeWidth(parsed));
+              }
+            }}
+            onBlur={() => {
+              const parsed = Number(strokeWidthDraft);
+              if (!Number.isFinite(parsed)) {
+                setStrokeWidthDraft(String(lineStrokeWidth));
+                return;
+              }
+              const clamped = clampStrokeWidth(parsed);
+              setStrokeWidthDraft(String(clamped));
+              onLineStrokeWidthChange(clamped);
+            }}
+            className="w-full rounded-md border border-slate-300 bg-white px-2 py-1 text-xs text-slate-800 outline-none focus:border-slate-500"
+          />
+        </div>
       </div>
     </div>
   );

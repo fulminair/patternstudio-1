@@ -39,6 +39,13 @@ const MEASUREMENT_KEYS: Array<keyof HofenbitzerCasualBaseMeasurements> = [
 const isObject = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null;
 
+const sanitizeLineStrokeWidth = (value: unknown, fallback: number): number => {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return fallback;
+  }
+  return Math.min(6, Math.max(0.1, Math.round(value * 100) / 100));
+};
+
 const parseBase = (
   input: unknown,
   defaults: HofenbitzerCasualBaseMeasurements,
@@ -98,6 +105,7 @@ const parseUi = (
     showMarkers: true,
     showCleanUp: false,
     exportSelectedOnly: false,
+    lineStrokeWidth: 1,
   };
 
   if (!isObject(input)) {
@@ -121,6 +129,7 @@ const parseUi = (
       typeof input.exportSelectedOnly === "boolean"
         ? input.exportSelectedOnly
         : fallback.exportSelectedOnly,
+    lineStrokeWidth: sanitizeLineStrokeWidth(input.lineStrokeWidth, fallback.lineStrokeWidth),
   };
 };
 

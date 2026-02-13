@@ -21,6 +21,7 @@ export default function HomePage() {
   const ui = usePatternStore((state) => state.ui);
   const hydrateFromProject = usePatternStore((state) => state.hydrateFromProject);
   const setUiToggle = usePatternStore((state) => state.setUiToggle);
+  const setLineStrokeWidth = usePatternStore((state) => state.setLineStrokeWidth);
 
   const scenes = useMemo<CanvasInstanceScene[]>(() => {
     return instances.map((instance) => {
@@ -112,10 +113,12 @@ export default function HomePage() {
             showLabels={ui.showLabels}
             showMarkers={ui.showMarkers}
             showCleanUp={ui.showCleanUp}
+            lineStrokeWidth={ui.lineStrokeWidth}
             onToggleGrid={(checked) => setUiToggle("showGrid", checked)}
             onToggleLabels={(checked) => setUiToggle("showLabels", checked)}
             onToggleMarkers={(checked) => setUiToggle("showMarkers", checked)}
             onToggleCleanUp={(checked) => setUiToggle("showCleanUp", checked)}
+            onLineStrokeWidthChange={(value) => setLineStrokeWidth(value)}
             onSvgReady={(element) => {
               svgRef.current = element;
             }}

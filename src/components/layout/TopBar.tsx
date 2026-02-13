@@ -3,7 +3,12 @@
 import { useRouter } from "next/navigation";
 
 type TopBarProps = {
-  activePattern: "aldrich" | "armstrong" | "hofenbitzer" | "hofenbitzerCasual";
+  activePattern:
+    | "aldrich"
+    | "armstrong"
+    | "hofenbitzer"
+    | "hofenbitzerCasual"
+    | "hofenbitzerSleeve";
   onShare: () => void;
   onExport: () => void;
   isShareCopied: boolean;
@@ -33,6 +38,11 @@ const patternOptions = [
     key: "hofenbitzerCasual" as const,
     label: "Hofenbitzer's Casual Bodice",
     href: "/hofenbitzer-casual",
+  },
+  {
+    key: "hofenbitzerSleeve" as const,
+    label: "Hofenbitzer's Wide Basic Sleeve",
+    href: "/hofenbitzer-sleeve",
   },
 ];
 

@@ -3,29 +3,29 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { TopBar } from "@/components/layout/TopBar";
 import { PatternCanvas, type CanvasInstanceScene } from "@/components/canvas/PatternCanvas";
-import { HofenbitzerCasualDraftsPanel } from "@/components/panels/HofenbitzerCasualDraftsPanel";
-import { HofenbitzerCasualMeasurementsPanel } from "@/components/panels/HofenbitzerCasualMeasurementsPanel";
-import { buildScene } from "@/patterns/hofenbitzerCasualBodice/engine";
+import { HofenbitzerWideBasicSleeveDraftsPanel } from "@/components/panels/HofenbitzerWideBasicSleeveDraftsPanel";
+import { HofenbitzerWideBasicSleeveMeasurementsPanel } from "@/components/panels/HofenbitzerWideBasicSleeveMeasurementsPanel";
+import { buildScene } from "@/patterns/hofenbitzerWideBasicSleeve/engine";
 import { exportSvg } from "@/lib/exportSvg";
 import {
   mergeEffectiveMeasurements,
   selectProjectState,
-  useHofenbitzerCasualStore,
-} from "@/lib/hofenbitzerCasualStore";
-import { decodeHofenbitzerCasualProjectState } from "@/lib/share/hofenbitzerCasualDecode";
-import { encodeHofenbitzerCasualProjectState } from "@/lib/share/hofenbitzerCasualEncode";
+  useHofenbitzerWideBasicSleeveStore,
+} from "@/lib/hofenbitzerWideBasicSleeveStore";
+import { decodeHofenbitzerWideBasicSleeveProjectState } from "@/lib/share/hofenbitzerWideBasicSleeveDecode";
+import { encodeHofenbitzerWideBasicSleeveProjectState } from "@/lib/share/hofenbitzerWideBasicSleeveEncode";
 
-export default function HofenbitzerCasualPage() {
+export default function HofenbitzerWideBasicSleevePage() {
   const hasHydratedFromQuery = useRef(false);
   const svgRef = useRef<SVGSVGElement | null>(null);
   const [shareCopied, setShareCopied] = useState(false);
 
-  const base = useHofenbitzerCasualStore((state) => state.base);
-  const instances = useHofenbitzerCasualStore((state) => state.instances);
-  const ui = useHofenbitzerCasualStore((state) => state.ui);
-  const hydrateFromProject = useHofenbitzerCasualStore((state) => state.hydrateFromProject);
-  const setUiToggle = useHofenbitzerCasualStore((state) => state.setUiToggle);
-  const setLineStrokeWidth = useHofenbitzerCasualStore((state) => state.setLineStrokeWidth);
+  const base = useHofenbitzerWideBasicSleeveStore((state) => state.base);
+  const instances = useHofenbitzerWideBasicSleeveStore((state) => state.instances);
+  const ui = useHofenbitzerWideBasicSleeveStore((state) => state.ui);
+  const hydrateFromProject = useHofenbitzerWideBasicSleeveStore((state) => state.hydrateFromProject);
+  const setUiToggle = useHofenbitzerWideBasicSleeveStore((state) => state.setUiToggle);
+  const setLineStrokeWidth = useHofenbitzerWideBasicSleeveStore((state) => state.setLineStrokeWidth);
 
   const scenes = useMemo<CanvasInstanceScene[]>(() => {
     return instances.map((instance) => {
@@ -56,7 +56,7 @@ export default function HofenbitzerCasualPage() {
       return;
     }
 
-    const decoded = decodeHofenbitzerCasualProjectState(encoded);
+    const decoded = decodeHofenbitzerWideBasicSleeveProjectState(encoded);
     if (decoded) {
       hydrateFromProject(decoded);
     }
@@ -68,15 +68,15 @@ export default function HofenbitzerCasualPage() {
     }
 
     exportSvg(svgRef.current, {
-      filename: "patternstudio-hofenbitzer-casual-bodice.svg",
+      filename: "patternstudio-hofenbitzer-wide-basic-sleeve.svg",
       selectedOnly: ui.exportSelectedOnly,
       selectedInstanceId: ui.selectedInstanceId,
     });
   };
 
   const handleShare = useCallback(async () => {
-    const state = selectProjectState(useHofenbitzerCasualStore.getState());
-    const encoded = encodeHofenbitzerCasualProjectState(state);
+    const state = selectProjectState(useHofenbitzerWideBasicSleeveStore.getState());
+    const encoded = encodeHofenbitzerWideBasicSleeveProjectState(state);
     const url = `${window.location.origin}${window.location.pathname}?s=${encoded}`;
 
     try {
@@ -92,7 +92,7 @@ export default function HofenbitzerCasualPage() {
   return (
     <div className="flex min-h-screen flex-col bg-slate-100 text-slate-900">
       <TopBar
-        activePattern="hofenbitzerCasual"
+        activePattern="hofenbitzerSleeve"
         onShare={handleShare}
         onExport={handleExport}
         isShareCopied={shareCopied}
@@ -104,8 +104,8 @@ export default function HofenbitzerCasualPage() {
         <aside className="w-full shrink-0 border-b border-slate-200 bg-slate-50 lg:w-[520px] lg:border-b-0 lg:border-r xl:w-[560px]">
           <div className="h-full overflow-y-auto p-4 lg:p-5">
             <div className="space-y-4">
-              <HofenbitzerCasualMeasurementsPanel />
-              <HofenbitzerCasualDraftsPanel />
+              <HofenbitzerWideBasicSleeveMeasurementsPanel />
+              <HofenbitzerWideBasicSleeveDraftsPanel />
             </div>
           </div>
         </aside>
@@ -119,10 +119,7 @@ export default function HofenbitzerCasualPage() {
             showMarkers={ui.showMarkers}
             showCleanUp={ui.showCleanUp}
             lineStrokeWidth={ui.lineStrokeWidth}
-            cleanupConfig={{
-              mode: "patternOnly",
-              excludePathIds: ["front-shoulder-line"],
-            }}
+            cleanupConfig={{ mode: "patternOnly" }}
             onToggleGrid={(checked) => setUiToggle("showGrid", checked)}
             onToggleLabels={(checked) => setUiToggle("showLabels", checked)}
             onToggleMarkers={(checked) => setUiToggle("showMarkers", checked)}

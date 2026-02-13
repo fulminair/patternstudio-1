@@ -56,6 +56,7 @@ const defaultUi: HofenbitzerCasualProjectUiState = {
   showMarkers: true,
   showCleanUp: false,
   exportSelectedOnly: false,
+  lineStrokeWidth: 1,
 };
 
 const numericKeys: Array<keyof HofenbitzerCasualBaseMeasurements> = [
@@ -91,6 +92,15 @@ const numericKeys: Array<keyof HofenbitzerCasualBaseMeasurements> = [
 const sanitizeNumber = (value: number, fallback: number): number =>
   Number.isFinite(value) ? value : fallback;
 
+const sanitizeLineStrokeWidth = (value: number, fallback = 1): number => {
+  if (!Number.isFinite(value)) {
+    return fallback;
+  }
+  return Math.min(6, Math.max(0.1, Math.round(value * 100) / 100));
+};
+
+type UiBooleanKey = "showGrid" | "showLabels" | "showMarkers" | "showCleanUp" | "exportSelectedOnly";
+
 export const mergeEffectiveMeasurements = (
   base: HofenbitzerCasualBaseMeasurements,
   instance: HofenbitzerCasualPatternInstance,
@@ -118,10 +128,8 @@ export type HofenbitzerCasualStoreState = HofenbitzerCasualProjectState & {
   ) => void;
   applyFitProfileToDraft: (id: string, fitIndex: number) => void;
   resetOverrides: (id: string) => void;
-  setUiToggle: (
-    key: Exclude<keyof HofenbitzerCasualProjectUiState, "selectedInstanceId">,
-    value: boolean,
-  ) => void;
+  setUiToggle: (key: UiBooleanKey, value: boolean) => void;
+  setLineStrokeWidth: (value: number) => void;
   hydrateFromProject: (next: HofenbitzerCasualProjectState) => void;
   getEffectiveMeasurements: (id: string) => HofenbitzerCasualEffectiveMeasurements | null;
   getSceneForInstance: (id: string) => PatternScene | null;
@@ -273,6 +281,15 @@ export const useHofenbitzerCasualStore = create<HofenbitzerCasualStoreState>((se
     }));
   },
 
+  setLineStrokeWidth: (value) => {
+    set((state) => ({
+      ui: {
+        ...state.ui,
+        lineStrokeWidth: sanitizeLineStrokeWidth(value, state.ui.lineStrokeWidth),
+      },
+    }));
+  },
+
   hydrateFromProject: (next) => {
     set(() => {
       const instances = next.instances.length > 0 ? next.instances : [createInstance(0)];
@@ -293,6 +310,10 @@ export const useHofenbitzerCasualStore = create<HofenbitzerCasualStoreState>((se
         ui: {
           ...defaultUi,
           ...next.ui,
+          lineStrokeWidth: sanitizeLineStrokeWidth(
+            Number(next.ui.lineStrokeWidth),
+            defaultUi.lineStrokeWidth,
+          ),
           selectedInstanceId: selectedExists ? next.ui.selectedInstanceId : instances[0]?.id ?? null,
         },
       };

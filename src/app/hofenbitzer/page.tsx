@@ -25,6 +25,7 @@ export default function HofenbitzerPage() {
   const ui = useHofenbitzerStore((state) => state.ui);
   const hydrateFromProject = useHofenbitzerStore((state) => state.hydrateFromProject);
   const setUiToggle = useHofenbitzerStore((state) => state.setUiToggle);
+  const setLineStrokeWidth = useHofenbitzerStore((state) => state.setLineStrokeWidth);
 
   const scenes = useMemo<CanvasInstanceScene[]>(() => {
     return instances.map((instance) => {
@@ -117,11 +118,13 @@ export default function HofenbitzerPage() {
             showLabels={ui.showLabels}
             showMarkers={ui.showMarkers}
             showCleanUp={ui.showCleanUp}
+            lineStrokeWidth={ui.lineStrokeWidth}
             cleanupConfig={{ mode: "patternOnly" }}
             onToggleGrid={(checked) => setUiToggle("showGrid", checked)}
             onToggleLabels={(checked) => setUiToggle("showLabels", checked)}
             onToggleMarkers={(checked) => setUiToggle("showMarkers", checked)}
             onToggleCleanUp={(checked) => setUiToggle("showCleanUp", checked)}
+            onLineStrokeWidthChange={(value) => setLineStrokeWidth(value)}
             onSvgReady={(element) => {
               svgRef.current = element;
             }}

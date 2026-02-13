@@ -56,6 +56,7 @@ export type ArmstrongProjectUiState = {
   showMarkers: boolean;
   showCleanUp: boolean;
   exportSelectedOnly: boolean;
+  lineStrokeWidth: number;
 };
 
 export type ArmstrongProjectState = {

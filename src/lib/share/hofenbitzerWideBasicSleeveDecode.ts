@@ -1,38 +1,32 @@
-import { getDefaultBaseMeasurements } from "@/patterns/armstrongBodice/engine";
+import { getDefaultBaseMeasurements } from "@/patterns/hofenbitzerWideBasicSleeve/engine";
 import type {
-  ArmstrongBaseMeasurements,
-  ArmstrongPatternInstance,
-  ArmstrongProjectState,
-  ArmstrongProjectUiState,
-} from "@/patterns/armstrongBodice/types";
+  HofenbitzerWideBasicSleeveBaseMeasurements,
+  HofenbitzerWideBasicSleevePatternInstance,
+  HofenbitzerWideBasicSleeveProjectState,
+  HofenbitzerWideBasicSleeveProjectUiState,
+} from "@/patterns/hofenbitzerWideBasicSleeve/types";
 
-const MEASUREMENT_KEYS: Array<keyof ArmstrongBaseMeasurements> = [
-  "fullLength",
-  "acrossShoulder",
-  "centreFrontLength",
-  "bustArc",
-  "shoulderSlope",
-  "bustDepth",
-  "shoulderLength",
-  "bustSpan",
-  "acrossChest",
-  "dartPlacement",
-  "newStrap",
-  "sideLength",
-  "waistArc",
-  "fullLengthBack",
-  "acrossShoulderBack",
-  "centreFrontLengthBack",
-  "bustArcBack",
-  "shoulderSlopeBack",
-  "shoulderLengthBack",
-  "bustSpanBack",
-  "acrossChestBack",
-  "dartPlacementBack",
-  "sideLengthBack",
-  "waistArcBack",
-  "backNeck",
-  "bustCup",
+const MEASUREMENT_KEYS: Array<keyof HofenbitzerWideBasicSleeveBaseMeasurements> = [
+  "AhH",
+  "AhHEase",
+  "fAh",
+  "bAh",
+  "AhC",
+  "AhCEase",
+  "fAhEase",
+  "bAhEase",
+  "AL",
+  "ALEase",
+  "upAC",
+  "upACEase",
+  "WrC",
+  "WrCEase",
+  "CapEasePct",
+  "CapEasePctEase",
+  "CapCEase",
+  "CapLineEase",
+  "fAP",
+  "bAP",
 ];
 
 const isObject = (value: unknown): value is Record<string, unknown> =>
@@ -47,8 +41,8 @@ const sanitizeLineStrokeWidth = (value: unknown, fallback: number): number => {
 
 const parseBase = (
   input: unknown,
-  defaults: ArmstrongBaseMeasurements,
-): ArmstrongBaseMeasurements => {
+  defaults: HofenbitzerWideBasicSleeveBaseMeasurements,
+): HofenbitzerWideBasicSleeveBaseMeasurements => {
   if (!isObject(input)) {
     return defaults;
   }
@@ -57,14 +51,11 @@ const parseBase = (
 
   for (const key of MEASUREMENT_KEYS) {
     const candidate = input[key];
-    if (key === "bustCup") {
-      if (
-        candidate === "A Cup" ||
-        candidate === "B Cup" ||
-        candidate === "C Cup" ||
-        candidate === "D Cup"
-      ) {
-        next.bustCup = candidate;
+    if (key === "AhC") {
+      if (candidate === null) {
+        next.AhC = null;
+      } else if (typeof candidate === "number" && Number.isFinite(candidate)) {
+        next.AhC = candidate;
       }
       continue;
     }
@@ -77,7 +68,7 @@ const parseBase = (
   return next;
 };
 
-const parseInstances = (input: unknown): ArmstrongPatternInstance[] => {
+const parseInstances = (input: unknown): HofenbitzerWideBasicSleevePatternInstance[] => {
   if (!Array.isArray(input)) {
     return [];
   }
@@ -86,7 +77,7 @@ const parseInstances = (input: unknown): ArmstrongPatternInstance[] => {
     .filter((value): value is Record<string, unknown> => isObject(value))
     .map((value, index) => {
       const overrides = isObject(value.overrides) ? value.overrides : {};
-      const parsedOverrides: ArmstrongPatternInstance["overrides"] = {};
+      const parsedOverrides: HofenbitzerWideBasicSleevePatternInstance["overrides"] = {};
 
       for (const key of MEASUREMENT_KEYS) {
         const candidate = overrides[key];
@@ -94,18 +85,16 @@ const parseInstances = (input: unknown): ArmstrongPatternInstance[] => {
           continue;
         }
 
-        if (
-          key === "bustCup" &&
-          (candidate === "A Cup" ||
-            candidate === "B Cup" ||
-            candidate === "C Cup" ||
-            candidate === "D Cup")
-        ) {
-          parsedOverrides.bustCup = candidate;
+        if (key === "AhC") {
+          if (candidate === null) {
+            parsedOverrides.AhC = null;
+          } else if (typeof candidate === "number" && Number.isFinite(candidate)) {
+            parsedOverrides.AhC = candidate;
+          }
           continue;
         }
 
-        if (key !== "bustCup" && typeof candidate === "number" && Number.isFinite(candidate)) {
+        if (typeof candidate === "number" && Number.isFinite(candidate)) {
           parsedOverrides[key] = candidate;
         }
       }
@@ -122,9 +111,9 @@ const parseInstances = (input: unknown): ArmstrongPatternInstance[] => {
 
 const parseUi = (
   input: unknown,
-  instances: ArmstrongPatternInstance[],
-): ArmstrongProjectUiState => {
-  const fallback: ArmstrongProjectUiState = {
+  instances: HofenbitzerWideBasicSleevePatternInstance[],
+): HofenbitzerWideBasicSleeveProjectUiState => {
+  const fallback: HofenbitzerWideBasicSleeveProjectUiState = {
     selectedInstanceId: instances[0]?.id ?? null,
     showGrid: true,
     showLabels: true,
@@ -159,9 +148,9 @@ const parseUi = (
   };
 };
 
-export const decodeArmstrongProjectState = (
+export const decodeHofenbitzerWideBasicSleeveProjectState = (
   encoded: string,
-): ArmstrongProjectState | null => {
+): HofenbitzerWideBasicSleeveProjectState | null => {
   try {
     const decoded = decodeURIComponent(encoded);
     const parsed = JSON.parse(decoded) as unknown;

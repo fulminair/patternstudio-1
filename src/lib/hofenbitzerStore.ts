@@ -55,6 +55,7 @@ const defaultUi: HofenbitzerProjectUiState = {
   showMarkers: true,
   showCleanUp: false,
   exportSelectedOnly: false,
+  lineStrokeWidth: 1,
 };
 
 const numericKeys: Array<Exclude<keyof HofenbitzerBaseMeasurements, "hipProfile" | "dartsAuto">> = [
@@ -77,6 +78,15 @@ type DartDistributionKey = "sideDart" | "frontDart" | "backDart1" | "backDart2";
 
 const sanitizeNumber = (value: number, fallback: number): number =>
   Number.isFinite(value) ? value : fallback;
+
+const sanitizeLineStrokeWidth = (value: number, fallback = 1): number => {
+  if (!Number.isFinite(value)) {
+    return fallback;
+  }
+  return Math.min(6, Math.max(0.1, Math.round(value * 100) / 100));
+};
+
+type UiBooleanKey = "showGrid" | "showLabels" | "showMarkers" | "showCleanUp" | "exportSelectedOnly";
 
 export const mergeEffectiveMeasurements = (
   base: HofenbitzerBaseMeasurements,
@@ -106,10 +116,8 @@ export type HofenbitzerStoreState = HofenbitzerProjectState & {
   setDartValue: (id: string, key: DartDistributionKey, value: number) => void;
   resetDartsAutocalc: (id: string) => void;
   resetOverrides: (id: string) => void;
-  setUiToggle: (
-    key: Exclude<keyof HofenbitzerProjectUiState, "selectedInstanceId">,
-    value: boolean,
-  ) => void;
+  setUiToggle: (key: UiBooleanKey, value: boolean) => void;
+  setLineStrokeWidth: (value: number) => void;
   hydrateFromProject: (next: HofenbitzerProjectState) => void;
   getEffectiveMeasurements: (id: string) => HofenbitzerEffectiveMeasurements | null;
   getSceneForInstance: (id: string) => PatternScene | null;
@@ -324,6 +332,15 @@ export const useHofenbitzerStore = create<HofenbitzerStoreState>((set, get) => (
     }));
   },
 
+  setLineStrokeWidth: (value) => {
+    set((state) => ({
+      ui: {
+        ...state.ui,
+        lineStrokeWidth: sanitizeLineStrokeWidth(value, state.ui.lineStrokeWidth),
+      },
+    }));
+  },
+
   hydrateFromProject: (next) => {
     set(() => {
       const instances = next.instances.length > 0 ? next.instances : [createInstance(0)];
@@ -351,6 +368,10 @@ export const useHofenbitzerStore = create<HofenbitzerStoreState>((set, get) => (
         ui: {
           ...defaultUi,
           ...next.ui,
+          lineStrokeWidth: sanitizeLineStrokeWidth(
+            Number(next.ui.lineStrokeWidth),
+            defaultUi.lineStrokeWidth,
+          ),
           selectedInstanceId: selectedExists ? next.ui.selectedInstanceId : instances[0]?.id ?? null,
         },
       };

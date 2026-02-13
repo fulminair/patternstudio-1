@@ -49,6 +49,7 @@ export type ProjectUiState = {
   showMarkers: boolean;
   showCleanUp: boolean;
   exportSelectedOnly: boolean;
+  lineStrokeWidth: number;
 };
 
 export type ProjectState = {
