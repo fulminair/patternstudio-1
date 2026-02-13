@@ -117,7 +117,10 @@ export default function HofenbitzerCasualPage() {
             showLabels={ui.showLabels}
             showMarkers={ui.showMarkers}
             showCleanUp={ui.showCleanUp}
-            cleanupConfig={{ mode: "patternOnly" }}
+            cleanupConfig={{
+              mode: "patternOnly",
+              excludePathIds: ["front-shoulder-line"],
+            }}
             onToggleGrid={(checked) => setUiToggle("showGrid", checked)}
             onToggleLabels={(checked) => setUiToggle("showLabels", checked)}
             onToggleMarkers={(checked) => setUiToggle("showMarkers", checked)}

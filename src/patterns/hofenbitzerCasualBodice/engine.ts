@@ -242,6 +242,24 @@ const extendLineToY = (a: DraftPoint, b: DraftPoint, targetY: number): DraftPoin
   return p(a.x + dx * t, targetY);
 };
 
+const intersectLineSegmentWithVertical = (
+  a: DraftPoint,
+  b: DraftPoint,
+  x: number,
+): DraftPoint | null => {
+  const dx = b.x - a.x;
+  if (Math.abs(dx) < 0.0001) {
+    return null;
+  }
+
+  const t = (x - a.x) / dx;
+  if (t < 0 || t > 1) {
+    return null;
+  }
+
+  return p(x, a.y + (b.y - a.y) * t);
+};
+
 const pointOnSegment = (
   candidate: DraftPoint,
   a: DraftPoint,
@@ -367,8 +385,10 @@ const buildBulgedCubicControls = (
   let nx = 0;
   let ny = 0;
   if (length > 0) {
-    nx = -dy / length;
-    ny = dx / length;
+    // Match Illustrator's handle orientation from drawCurveBetween(), which is computed
+    // in artboard coordinates (y-up). In our scene coordinates (y-down), this normal is flipped.
+    nx = dy / length;
+    ny = -dx / length;
   }
 
   return {
@@ -875,6 +895,7 @@ export const buildScene = (
   let point17a: DraftPoint | null = null;
   let point18: DraftPoint | null = null;
   let point24: DraftPoint | null = null;
+  let frontShoulderStart: DraftPoint | null = null;
   let backShoulderEnd: DraftPoint | null = null;
 
   if (measurements.bShS > 0) {
@@ -1102,6 +1123,7 @@ export const buildScene = (
 
   if (!point24 && measurements.fShS > 0) {
     const frontShoulderRadians = (measurements.frontShoulderAngle * Math.PI) / 180;
+    frontShoulderStart = point20a;
     point24 = registerPoint(
       "24",
       p(
@@ -1118,6 +1140,16 @@ export const buildScene = (
     if (controls) {
       addCubic("front-armhole-curve", point24, controls.c1, controls.c2, point12, {
         kind: "pattern",
+        strokeWidth: 0.26,
+      });
+    }
+  }
+
+  if (point24 && frontShoulderStart) {
+    const shoulderCut = intersectLineSegmentWithVertical(frontShoulderStart, point24, point13.x);
+    if (shoulderCut) {
+      addLine("front-shoulder-line-cleanup", frontShoulderStart, shoulderCut, {
+        kind: "cleanup",
         strokeWidth: 0.26,
       });
     }

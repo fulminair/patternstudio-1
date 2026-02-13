@@ -17,6 +17,7 @@ export type CanvasCleanupConfig = {
   mode: "traceWithPathFilter" | "patternOnly";
   tracePointOrder?: readonly string[];
   keepPathIds?: readonly string[];
+  excludePathIds?: readonly string[];
 };
 
 type PatternCanvasProps = {
@@ -308,6 +309,10 @@ export function PatternCanvas({
     () => new Set(cleanupConfig?.keepPathIds ?? DEFAULT_TRACE_CLEANUP_PATH_IDS),
     [cleanupConfig?.keepPathIds],
   );
+  const cleanupExcludePathIdSet = useMemo(
+    () => new Set(cleanupConfig?.excludePathIds ?? []),
+    [cleanupConfig?.excludePathIds],
+  );
 
   return (
     <div className="relative h-full w-full overflow-hidden rounded-xl border border-slate-200 bg-gradient-to-br from-slate-50 to-slate-100">
@@ -342,10 +347,13 @@ export function PatternCanvas({
                 : null;
 
               const visiblePaths = !showCleanUp
-                ? instance.scene.paths
+                ? instance.scene.paths.filter((path) => path.kind !== "cleanup")
                 : cleanupMode === "traceWithPathFilter"
                   ? instance.scene.paths.filter((path) => cleanupPathIdSet.has(path.id))
-                  : instance.scene.paths.filter((path) => path.kind !== "construction");
+                  : instance.scene.paths.filter(
+                      (path) =>
+                        path.kind !== "construction" && !cleanupExcludePathIdSet.has(path.id),
+                    );
 
               const visibleMarkers = !showCleanUp
                 ? instance.scene.markers
@@ -368,7 +376,7 @@ export function PatternCanvas({
                     <path
                       d={cleanupTraceD}
                       stroke="currentColor"
-                      strokeWidth={0.62}
+                      strokeWidth={0.8}
                       vectorEffect="non-scaling-stroke"
                     />
                   ) : null}
@@ -378,8 +386,8 @@ export function PatternCanvas({
                       key={`${instance.instanceId}-${path.id}`}
                       d={path.d}
                       stroke={path.stroke}
-                      strokeWidth={Math.max(path.strokeWidth * 1.75, 0.58)}
-                      strokeDasharray={showCleanUp ? undefined : path.dashed ? "0.9 0.6" : undefined}
+                      strokeWidth={0.8}
+                      strokeDasharray={showCleanUp ? undefined : path.dashed ? "16 9" : undefined}
                       vectorEffect="non-scaling-stroke"
                     />
                   ))}

@@ -68,7 +68,7 @@ export type PatternPath = {
   stroke: string;
   strokeWidth: number;
   dashed?: boolean;
-  kind?: "pattern" | "construction";
+  kind?: "pattern" | "construction" | "cleanup";
 };
 
 export type PatternLabel = {
