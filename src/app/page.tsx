@@ -102,6 +102,7 @@ export default function HomePage() {
         <main className="min-h-[60vh] flex-1 p-4">
           <PatternCanvas
             scenes={scenes}
+            selectedInstanceId={ui.selectedInstanceId}
             showGrid={ui.showGrid}
             showLabels={ui.showLabels}
             showMarkers={ui.showMarkers}

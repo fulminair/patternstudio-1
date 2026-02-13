@@ -15,6 +15,7 @@ export type CanvasInstanceScene = {
 
 type PatternCanvasProps = {
   scenes: CanvasInstanceScene[];
+  selectedInstanceId: string | null;
   showGrid: boolean;
   showLabels: boolean;
   showMarkers: boolean;
@@ -59,6 +60,7 @@ const boundsKey = (bounds: PatternBounds): string =>
 
 export function PatternCanvas({
   scenes,
+  selectedInstanceId,
   showGrid,
   showLabels,
   showMarkers,
@@ -77,6 +79,17 @@ export function PatternCanvas({
     const visible = scenes.filter((scene) => scene.visible);
     return visible.length > 0 ? visible : scenes;
   }, [scenes]);
+
+  const labelTargetId = useMemo(() => {
+    if (
+      selectedInstanceId &&
+      scenes.some((scene) => scene.visible && scene.instanceId === selectedInstanceId)
+    ) {
+      return selectedInstanceId;
+    }
+
+    return scenes.find((scene) => scene.visible)?.instanceId ?? null;
+  }, [scenes, selectedInstanceId]);
 
   const paddedBounds = useMemo(() => {
     const combined = combineBounds(targetScenes.map((scene) => scene.scene.bounds));
@@ -209,7 +222,7 @@ export function PatternCanvas({
                     key={`${instance.instanceId}-${path.id}`}
                     d={path.d}
                     stroke={path.stroke}
-                    strokeWidth={path.strokeWidth}
+                    strokeWidth={Math.max(path.strokeWidth * 1.6, 0.52)}
                     strokeDasharray={path.dashed ? "0.9 0.6" : undefined}
                     vectorEffect="non-scaling-stroke"
                   />
@@ -227,15 +240,18 @@ export function PatternCanvas({
                     ))
                   : null}
 
-                {showLabels
+                {showLabels && labelTargetId === instance.instanceId
                   ? instance.scene.labels.map((label) => (
                       <text
                         key={`${instance.instanceId}-${label.id}`}
                         x={label.x}
                         y={label.y}
                         fill={label.color ?? "currentColor"}
-                        fontSize={1.3}
-                        fontFamily="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono"
+                        fontSize={0.6}
+                        fontWeight={400}
+                        opacity={0.88}
+                        fontFamily="var(--font-geist-sans), 'Avenir Next', 'Segoe UI', sans-serif"
+                        letterSpacing="0.01em"
                         transform={
                           label.rotation
                             ? `rotate(${label.rotation} ${label.x} ${label.y})`
