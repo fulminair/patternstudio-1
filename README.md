@@ -1,36 +1,30 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# PatternStudio
 
-## Getting Started
+PatternStudio is a Next.js web app that ports an Aldrich close-fitting bodice drafting workflow from Illustrator-style scripting into a live interactive SVG workspace.
 
-First, run the development server:
+## Run
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open `http://localhost:3000`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Build and lint
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm run lint
+npm run build
+```
 
-## Learn More
+## Architecture notes
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- `src/patterns/aldrichCloseFittingBodice/engine.ts`: Pure drafting engine (defaults, derived math, scene construction).
+- `src/patterns/types.ts`: Shared project, measurement, and scene types.
+- `src/lib/store.ts`: Zustand state for base measurements, instances, overrides, selection, and UI flags.
+- `src/components/panels/*`: Left-side controls (measurements, toggles, derived summary, instance overrides).
+- `src/components/canvas/PatternCanvas.tsx`: Live SVG rendering, pan/zoom via `d3-zoom`, grid/labels/markers controls.
+- `src/lib/exportSvg.ts`: SVG export using `XMLSerializer`.
+- `src/lib/share/*`: Share URL encoding/decoding for project state hydration.
+- `scripts/aldrich_close_fitting_bodice_v1.jsx`: Stored Illustrator-style source reference.
