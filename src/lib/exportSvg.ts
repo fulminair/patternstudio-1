@@ -16,6 +16,10 @@ export const exportSvg = (
   clone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
   clone.setAttribute("xmlns:xlink", "http://www.w3.org/1999/xlink");
 
+  clone.querySelectorAll("[data-drag-hitbox='true'], [data-snap-guide='true']").forEach((node) => {
+    node.remove();
+  });
+
   if (selectedOnly && selectedInstanceId) {
     const groups = clone.querySelectorAll("[data-instance-id]");
     groups.forEach((group) => {

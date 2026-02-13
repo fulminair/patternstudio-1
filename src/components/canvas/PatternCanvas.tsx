@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { select } from "d3-selection";
 import { zoom, zoomIdentity, type ZoomBehavior, type ZoomTransform } from "d3-zoom";
 import type { PatternBounds, PatternScene } from "@/patterns/types";
@@ -36,6 +36,26 @@ type PatternCanvasProps = {
   cleanupConfig?: CanvasCleanupConfig;
   onSvgReady?: (svg: SVGSVGElement | null) => void;
 };
+
+type DraftOffset = {
+  x: number;
+  y: number;
+};
+
+type DragState = {
+  instanceId: string;
+  pointerId: number;
+  startPointer: DraftOffset;
+  startOffset: DraftOffset;
+};
+
+type SnapResult = {
+  offset: DraftOffset;
+  guideX: number | null;
+  guideY: number | null;
+};
+
+const SNAP_THRESHOLD_CM = 1;
 
 const combineBounds = (boundsList: PatternBounds[]): PatternBounds => {
   if (boundsList.length === 0) {
@@ -182,13 +202,30 @@ export function PatternCanvas({
   const viewportRef = useRef<SVGGElement | null>(null);
   const zoomRef = useRef<ZoomBehavior<SVGSVGElement, unknown> | null>(null);
   const zoomSelectionRef = useRef<ReturnType<typeof select<SVGSVGElement, unknown>> | null>(null);
+  const dragStateRef = useRef<DragState | null>(null);
   const [transformText, setTransformText] = useState<ZoomTransform>(zoomIdentity);
   const [strokeWidthDraft, setStrokeWidthDraft] = useState(String(lineStrokeWidth));
+  const [draftOffsets, setDraftOffsets] = useState<Record<string, DraftOffset>>({});
+  const draftOffsetsRef = useRef<Record<string, DraftOffset>>({});
+  const [snapGuides, setSnapGuides] = useState<{ x: number | null; y: number | null }>({
+    x: null,
+    y: null,
+  });
 
   const targetScenes = useMemo(() => {
     const visible = scenes.filter((scene) => scene.visible);
     return visible.length > 0 ? visible : scenes;
   }, [scenes]);
+  const visibleScenes = useMemo(() => scenes.filter((scene) => scene.visible), [scenes]);
+  const draggableInstanceId = useMemo(() => {
+    if (
+      selectedInstanceId &&
+      visibleScenes.some((scene) => scene.instanceId === selectedInstanceId)
+    ) {
+      return selectedInstanceId;
+    }
+    return visibleScenes[0]?.instanceId ?? null;
+  }, [selectedInstanceId, visibleScenes]);
 
   const labelTargetId = useMemo(() => {
     if (
@@ -234,6 +271,10 @@ export function PatternCanvas({
   useEffect(() => {
     setStrokeWidthDraft(String(lineStrokeWidth));
   }, [lineStrokeWidth]);
+
+  useEffect(() => {
+    draftOffsetsRef.current = draftOffsets;
+  }, [draftOffsets]);
 
   useEffect(() => {
     const svgElement = svgRef.current;
@@ -339,6 +380,194 @@ export function PatternCanvas({
     [cleanupConfig?.excludePathIds],
   );
 
+  const sceneCenters = useMemo(() => {
+    const centers: Record<string, DraftOffset> = {};
+    for (const scene of scenes) {
+      const { minX, minY, maxX, maxY } = scene.scene.bounds;
+      centers[scene.instanceId] = {
+        x: (minX + maxX) / 2,
+        y: (minY + maxY) / 2,
+      };
+    }
+    return centers;
+  }, [scenes]);
+
+  const getWorldPoint = (clientX: number, clientY: number): DraftOffset | null => {
+    const svg = svgRef.current;
+    const viewport = viewportRef.current;
+    if (!svg || !viewport) {
+      return null;
+    }
+
+    const ctm = viewport.getScreenCTM();
+    if (!ctm) {
+      return null;
+    }
+
+    const svgPoint = svg.createSVGPoint();
+    svgPoint.x = clientX;
+    svgPoint.y = clientY;
+    const worldPoint = svgPoint.matrixTransform(ctm.inverse());
+    return { x: worldPoint.x, y: worldPoint.y };
+  };
+
+  const applyAxisSnap = (
+    offsetMap: Record<string, DraftOffset>,
+    instanceId: string,
+    candidate: DraftOffset,
+  ): SnapResult => {
+    const movingCenter = sceneCenters[instanceId];
+    if (!movingCenter) {
+      return {
+        offset: candidate,
+        guideX: null,
+        guideY: null,
+      };
+    }
+
+    const movedCenterX = movingCenter.x + candidate.x;
+    const movedCenterY = movingCenter.y + candidate.y;
+    let bestSnapDeltaX = Number.POSITIVE_INFINITY;
+    let bestSnapDeltaY = Number.POSITIVE_INFINITY;
+    let guideX: number | null = null;
+    let guideY: number | null = null;
+
+    for (const scene of scenes) {
+      if (!scene.visible || scene.instanceId === instanceId) {
+        continue;
+      }
+
+      const otherCenter = sceneCenters[scene.instanceId];
+      if (!otherCenter) {
+        continue;
+      }
+
+      const otherOffset = offsetMap[scene.instanceId] ?? { x: 0, y: 0 };
+      const otherCenterX = otherCenter.x + otherOffset.x;
+      const otherCenterY = otherCenter.y + otherOffset.y;
+      const deltaX = movedCenterX - otherCenterX;
+      const deltaY = movedCenterY - otherCenterY;
+
+      if (Math.abs(deltaX) <= SNAP_THRESHOLD_CM && Math.abs(deltaX) < Math.abs(bestSnapDeltaX)) {
+        bestSnapDeltaX = deltaX;
+        guideX = otherCenterX;
+      }
+      if (Math.abs(deltaY) <= SNAP_THRESHOLD_CM && Math.abs(deltaY) < Math.abs(bestSnapDeltaY)) {
+        bestSnapDeltaY = deltaY;
+        guideY = otherCenterY;
+      }
+    }
+
+    let x = candidate.x;
+    let y = candidate.y;
+    if (Number.isFinite(bestSnapDeltaX)) {
+      x -= bestSnapDeltaX;
+    }
+    if (Number.isFinite(bestSnapDeltaY)) {
+      y -= bestSnapDeltaY;
+    }
+
+    return {
+      offset: {
+        x: Math.round(x * 100) / 100,
+        y: Math.round(y * 100) / 100,
+      },
+      guideX,
+      guideY,
+    };
+  };
+
+  const handleDraftPointerDown = (
+    event: ReactPointerEvent<SVGGElement>,
+    instanceId: string,
+  ) => {
+    if (draggableInstanceId !== instanceId || event.button !== 0) {
+      return;
+    }
+
+    const startPointer = getWorldPoint(event.clientX, event.clientY);
+    if (!startPointer) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    setSnapGuides({ x: null, y: null });
+
+    dragStateRef.current = {
+      instanceId,
+      pointerId: event.pointerId,
+      startPointer,
+      startOffset: draftOffsets[instanceId] ?? { x: 0, y: 0 },
+    };
+  };
+
+  const handleDraftPointerMove = (
+    event: ReactPointerEvent<SVGGElement>,
+    instanceId: string,
+  ) => {
+    const dragState = dragStateRef.current;
+    if (
+      !dragState ||
+      dragState.instanceId !== instanceId ||
+      dragState.pointerId !== event.pointerId
+    ) {
+      return;
+    }
+
+    const currentPointer = getWorldPoint(event.clientX, event.clientY);
+    if (!currentPointer) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    const candidate: DraftOffset = {
+      x: dragState.startOffset.x + (currentPointer.x - dragState.startPointer.x),
+      y: dragState.startOffset.y + (currentPointer.y - dragState.startPointer.y),
+    };
+    const snapped = applyAxisSnap(draftOffsetsRef.current, instanceId, candidate);
+    setSnapGuides({ x: snapped.guideX, y: snapped.guideY });
+
+    setDraftOffsets((prev) => {
+      const existing = prev[instanceId] ?? { x: 0, y: 0 };
+      if (
+        Math.abs(existing.x - snapped.offset.x) < 0.001 &&
+        Math.abs(existing.y - snapped.offset.y) < 0.001
+      ) {
+        return prev;
+      }
+      return {
+        ...prev,
+        [instanceId]: snapped.offset,
+      };
+    });
+  };
+
+  const handleDraftPointerUp = (
+    event: ReactPointerEvent<SVGGElement>,
+    instanceId: string,
+  ) => {
+    const dragState = dragStateRef.current;
+    if (
+      !dragState ||
+      dragState.instanceId !== instanceId ||
+      dragState.pointerId !== event.pointerId
+    ) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+    dragStateRef.current = null;
+    setSnapGuides({ x: null, y: null });
+  };
+
   return (
     <div className="relative h-full w-full overflow-hidden rounded-xl border border-slate-200 bg-gradient-to-br from-slate-50 to-slate-100">
       <svg
@@ -362,9 +591,38 @@ export function PatternCanvas({
             </g>
           ) : null}
 
+          {snapGuides.x !== null || snapGuides.y !== null ? (
+            <g
+              data-snap-guide="true"
+              stroke="rgba(15, 23, 42, 0.75)"
+              strokeWidth={0.1}
+              strokeDasharray="2.5 1.5"
+              pointerEvents="none"
+            >
+              {snapGuides.x !== null ? (
+                <line
+                  x1={snapGuides.x}
+                  y1={paddedBounds.minY - 20}
+                  x2={snapGuides.x}
+                  y2={paddedBounds.maxY + 20}
+                />
+              ) : null}
+              {snapGuides.y !== null ? (
+                <line
+                  x1={paddedBounds.minX - 20}
+                  y1={snapGuides.y}
+                  x2={paddedBounds.maxX + 20}
+                  y2={snapGuides.y}
+                />
+              ) : null}
+            </g>
+          ) : null}
+
           {scenes
             .filter((instance) => instance.visible)
             .map((instance) => {
+              const isDraggable = draggableInstanceId === instance.instanceId;
+              const instanceOffset = draftOffsets[instance.instanceId] ?? { x: 0, y: 0 };
               const cleanupTraceD = showCleanUp
                 ? cleanupMode === "traceWithPathFilter"
                   ? buildCleanupTracePath(instance.scene.points)
@@ -393,10 +651,31 @@ export function PatternCanvas({
                   key={instance.instanceId}
                   data-instance-id={instance.instanceId}
                   data-instance-name={instance.name}
+                  transform={
+                    instanceOffset.x !== 0 || instanceOffset.y !== 0
+                      ? `translate(${instanceOffset.x} ${instanceOffset.y})`
+                      : undefined
+                  }
                   style={{ color: instance.color }}
                   fill="none"
                   stroke={instance.color}
+                  onPointerDown={(event) => handleDraftPointerDown(event, instance.instanceId)}
+                  onPointerMove={(event) => handleDraftPointerMove(event, instance.instanceId)}
+                  onPointerUp={(event) => handleDraftPointerUp(event, instance.instanceId)}
+                  onPointerCancel={(event) => handleDraftPointerUp(event, instance.instanceId)}
                 >
+                  <rect
+                    data-drag-hitbox="true"
+                    x={instance.scene.bounds.minX}
+                    y={instance.scene.bounds.minY}
+                    width={Math.max(1, instance.scene.bounds.maxX - instance.scene.bounds.minX)}
+                    height={Math.max(1, instance.scene.bounds.maxY - instance.scene.bounds.minY)}
+                    fill="transparent"
+                    stroke="none"
+                    pointerEvents={isDraggable ? "all" : "none"}
+                    style={{ cursor: isDraggable ? "grab" : "default" }}
+                  />
+
                   {cleanupTraceD ? (
                     <path
                       d={cleanupTraceD}
