@@ -113,7 +113,6 @@ const CLEANUP_KEEP_PATH_IDS = new Set<string>([
   "waist-seam-front-dart-left-to-c",
   "waist-seam-side-right-to-c",
   "waist-seam-side-left-to-c",
-  "waist-seam-5-to-c",
 ]);
 
 const buildCleanupTracePath = (points: PatternScene["points"]): string | null => {
