@@ -101,7 +101,7 @@ export default function HofenbitzerWideBasicSleevePage() {
       />
 
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden lg:flex-row">
-        <aside className="w-full shrink-0 border-b border-slate-200 bg-slate-50 lg:w-[520px] lg:border-b-0 lg:border-r xl:w-[560px]">
+        <aside className="left-sidebar w-full shrink-0 border-b border-slate-200 bg-slate-50 lg:w-[520px] lg:border-b-0 lg:border-r xl:w-[560px]">
           <div className="h-full overflow-y-auto p-4 lg:p-5">
             <div className="space-y-4">
               <HofenbitzerWideBasicSleeveMeasurementsPanel />
