@@ -38,7 +38,7 @@ const createInstance = (
   overrides: PatternInstance["overrides"] = {},
 ): PatternInstance => ({
   id: createId(),
-  name: `Instance ${index + 1}`,
+  name: `Draft ${index + 1}`,
   color: INSTANCE_COLORS[index % INSTANCE_COLORS.length],
   visible: true,
   overrides,
@@ -166,6 +166,10 @@ export const usePatternStore = create<PatternStudioStore>((set, get) => ({
 
   removeInstance: (id) => {
     set((state) => {
+      if (state.instances.length <= 1) {
+        return state;
+      }
+
       const nextInstances = state.instances.filter((instance) => instance.id !== id);
       const selectedStillExists = nextInstances.some(
         (instance) => instance.id === state.ui.selectedInstanceId,

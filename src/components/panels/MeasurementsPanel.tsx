@@ -119,27 +119,64 @@ const toggleFields: Array<{ key: "closeWaistShaping" | "reducedDarting"; label: 
 
 export function MeasurementsPanel() {
   const base = usePatternStore((state) => state.base);
-  const setBaseMeasurement = usePatternStore((state) => state.setBaseMeasurement);
+  const instances = usePatternStore((state) => state.instances);
+  const selectedInstanceId = usePatternStore((state) => state.ui.selectedInstanceId);
+  const setOverride = usePatternStore((state) => state.setOverride);
+  const resetOverrides = usePatternStore((state) => state.resetOverrides);
 
-  const derived = useMemo(() => computeDerived(base), [base]);
+  const selectedDraft =
+    instances.find((instance) => instance.id === selectedInstanceId) ?? instances[0] ?? null;
+
+  const selectedMeasurements = useMemo<BaseMeasurements>(() => {
+    if (!selectedDraft) {
+      return base;
+    }
+
+    return {
+      ...base,
+      ...selectedDraft.overrides,
+    };
+  }, [base, selectedDraft]);
+
+  const derived = useMemo(() => computeDerived(selectedMeasurements), [selectedMeasurements]);
+
+  const commitMeasurement = (key: keyof BaseMeasurements, value: number | boolean) => {
+    if (!selectedDraft) {
+      return;
+    }
+    setOverride(selectedDraft.id, key, value);
+  };
 
   return (
     <section className="space-y-3">
-      <div>
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-600">Measurements</h2>
-        <p className="mt-0.5 text-xs text-slate-500">All values in centimeters.</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-600">Draft Measurements</h2>
+          <p className="mt-0.5 text-xs text-slate-500">
+            Editing: <span className="font-semibold text-slate-700">{selectedDraft?.name ?? "None"}</span>
+          </p>
+        </div>
+        {selectedDraft ? (
+          <button
+            type="button"
+            onClick={() => resetOverrides(selectedDraft.id)}
+            className="rounded-md border border-slate-300 px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-100"
+          >
+            Reset Draft
+          </button>
+        ) : null}
       </div>
 
       <div className="grid grid-cols-2 gap-2 xl:grid-cols-3">
         {measurementFields.map((field) => (
           <DebouncedNumberField
-            key={field.key}
+            key={`${selectedDraft?.id ?? "none"}-${field.key}`}
             label={field.label}
-            value={base[field.key]}
+            value={selectedMeasurements[field.key]}
             min={field.min}
             max={field.max}
             step={field.step}
-            onCommit={(next) => setBaseMeasurement(field.key as keyof BaseMeasurements, next)}
+            onCommit={(next) => commitMeasurement(field.key as keyof BaseMeasurements, next)}
           />
         ))}
       </div>
@@ -154,8 +191,8 @@ export function MeasurementsPanel() {
             <input
               type="checkbox"
               className="h-4 w-4 accent-slate-900"
-              checked={base[field.key]}
-              onChange={(event) => setBaseMeasurement(field.key, event.target.checked)}
+              checked={selectedMeasurements[field.key]}
+              onChange={(event) => commitMeasurement(field.key, event.target.checked)}
             />
           </label>
         ))}

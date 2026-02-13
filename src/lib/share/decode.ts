@@ -81,7 +81,7 @@ const parseInstances = (input: unknown): PatternInstance[] => {
 
       return {
         id: typeof value.id === "string" ? value.id : `shared-${index + 1}`,
-        name: typeof value.name === "string" ? value.name : `Instance ${index + 1}`,
+        name: typeof value.name === "string" ? value.name : `Draft ${index + 1}`,
         color: typeof value.color === "string" ? value.color : "#0f766e",
         visible: typeof value.visible === "boolean" ? value.visible : true,
         overrides: parsedOverrides,
