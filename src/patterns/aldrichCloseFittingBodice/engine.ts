@@ -740,14 +740,14 @@ export const buildScene = (measurements: EffectiveMeasurements): PatternScene =>
   labels.push(
     {
       id: "label-cf",
-      text: `CF (21-c) ${fmt(distanceBetween(p21, pc))} cm`,
+      text: `CF ${fmt(distanceBetween(p21, pc))} cm`,
       x: round2((p21.x + pc.x) / 2 - 0.9),
       y: round2((p21.y + pc.y) / 2),
       color: "currentColor",
     },
     {
       id: "label-cb",
-      text: `CB (1-5) ${fmt(distanceBetween(p1, p5))} cm`,
+      text: `CB ${fmt(distanceBetween(p1, p5))} cm`,
       x: round2((p1.x + p5.x) / 2 + 0.9),
       y: round2((p1.y + p5.y) / 2),
       color: "currentColor",

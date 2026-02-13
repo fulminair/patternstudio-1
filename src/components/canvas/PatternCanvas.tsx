@@ -543,7 +543,7 @@ export function PatternCanvas({
         </label>
 
         <div className="mt-1 border-t border-slate-200 pt-2">
-          <label className="mb-1 block text-[11px] font-medium text-slate-600">Stroke width</label>
+          <label className="mb-1 block text-[11px] font-medium text-slate-600">Line width</label>
           <input
             type="number"
             min={0.1}
@@ -553,12 +553,19 @@ export function PatternCanvas({
             onChange={(event) => {
               const next = event.target.value;
               setStrokeWidthDraft(next);
+              if (next.trim() === "") {
+                return;
+              }
               const parsed = Number(next);
               if (Number.isFinite(parsed)) {
                 onLineStrokeWidthChange(clampStrokeWidth(parsed));
               }
             }}
             onBlur={() => {
+              if (strokeWidthDraft.trim() === "") {
+                setStrokeWidthDraft(String(lineStrokeWidth));
+                return;
+              }
               const parsed = Number(strokeWidthDraft);
               if (!Number.isFinite(parsed)) {
                 setStrokeWidthDraft(String(lineStrokeWidth));
