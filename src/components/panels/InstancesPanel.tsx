@@ -30,16 +30,10 @@ const overrideFields: OverrideField[] = [
 type OverrideNumberInputProps = {
   instanceId: string;
   field: OverrideField;
-  baseValue: number;
   overrideValue: number | undefined;
 };
 
-function OverrideNumberInput({
-  instanceId,
-  field,
-  baseValue,
-  overrideValue,
-}: OverrideNumberInputProps) {
+function OverrideNumberInput({ instanceId, field, overrideValue }: OverrideNumberInputProps) {
   const setOverride = usePatternStore((state) => state.setOverride);
   const [draft, setDraft] = useState(overrideValue === undefined ? "" : String(overrideValue));
   const timeoutRef = useRef<number | null>(null);
@@ -67,15 +61,14 @@ function OverrideNumberInput({
   };
 
   return (
-    <div className="rounded-md border border-slate-200 bg-white p-2">
-      <div className="mb-1 flex items-center justify-between">
-        <label className="text-xs font-medium text-slate-700">{field.label}</label>
-        <span className="text-[11px] text-slate-500">Base {baseValue.toFixed(2)} cm</span>
-      </div>
+    <div className="rounded-md border border-slate-200 bg-white px-2 py-1.5">
+      <label className="mb-1 block text-[11px] font-medium uppercase tracking-wide text-slate-600">
+        {field.label}
+      </label>
       <input
         type="number"
         value={draft}
-        placeholder="Use base"
+        placeholder="Base"
         min={field.min}
         max={field.max}
         step={field.step}
@@ -126,9 +119,9 @@ function InstanceListItem({
 
   return (
     <li
-      className={`rounded-md border px-3 py-2 transition ${
+      className={`rounded-md border px-2 py-2 transition ${
         selected
-          ? "border-slate-800 bg-slate-50"
+          ? "border-slate-800 bg-slate-100"
           : "border-slate-200 bg-white hover:border-slate-300"
       }`}
     >
@@ -150,7 +143,7 @@ function InstanceListItem({
           <button
             type="button"
             onClick={() => toggleVisible(instance.id)}
-            className={`rounded px-2 py-1 text-xs font-medium ${
+            className={`rounded px-2 py-1 text-[11px] font-medium ${
               instance.visible
                 ? "bg-emerald-50 text-emerald-700"
                 : "bg-slate-100 text-slate-500"
@@ -161,7 +154,7 @@ function InstanceListItem({
           <button
             type="button"
             onClick={() => removeInstance(instance.id)}
-            className="rounded bg-rose-50 px-2 py-1 text-xs font-semibold text-rose-700"
+            className="rounded bg-rose-50 px-2 py-1 text-[11px] font-semibold text-rose-700"
             aria-label={`Remove ${instance.name}`}
           >
             ×
@@ -176,12 +169,11 @@ const overrideToggleFields: Array<{
   key: "closeWaistShaping" | "reducedDarting";
   label: string;
 }> = [
-  { key: "closeWaistShaping", label: "Close Waist Shaping" },
+  { key: "closeWaistShaping", label: "Close Waist" },
   { key: "reducedDarting", label: "Reduced Darting" },
 ];
 
 export function InstancesPanel() {
-  const base = usePatternStore((state) => state.base);
   const instances = usePatternStore((state) => state.instances);
   const selectedInstanceId = usePatternStore((state) => state.ui.selectedInstanceId);
   const addDuplicate = usePatternStore((state) => state.addDuplicate);
@@ -204,7 +196,7 @@ export function InstancesPanel() {
         </button>
       </div>
 
-      <ul className="space-y-2">
+      <ul className="grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-1">
         {instances.map((instance) => (
           <InstanceListItem
             key={instance.id}
@@ -215,19 +207,21 @@ export function InstancesPanel() {
       </ul>
 
       {selectedInstance ? (
-        <div className="rounded-md border border-slate-200 bg-slate-50 p-3">
-          <div className="mb-3 flex items-center justify-between">
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-600">Overrides</h3>
+        <div className="rounded-md border border-slate-200 bg-slate-50 p-2">
+          <div className="mb-2 flex items-center justify-between">
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-600">
+              Overrides ({selectedInstance.name})
+            </h3>
             <button
               type="button"
               onClick={() => resetOverrides(selectedInstance.id)}
               className="text-xs font-medium text-slate-600 hover:text-slate-900"
             >
-              Reset overrides
+              Reset
             </button>
           </div>
 
-          <div className="space-y-2">
+          <div className="grid grid-cols-2 gap-2 xl:grid-cols-3">
             {overrideFields.map((field) => {
               const overrideValue = selectedInstance.overrides[field.key] as number | undefined;
               return (
@@ -235,14 +229,13 @@ export function InstancesPanel() {
                   key={`${selectedInstance.id}-${field.key}-${overrideValue ?? "base"}`}
                   instanceId={selectedInstance.id}
                   field={field}
-                  baseValue={base[field.key]}
                   overrideValue={overrideValue}
                 />
               );
             })}
           </div>
 
-          <div className="mt-3 grid grid-cols-1 gap-2">
+          <div className="mt-2 grid grid-cols-2 gap-2">
             {overrideToggleFields.map((field) => {
               const overrideValue = selectedInstance.overrides[field.key];
               const current =
@@ -251,11 +244,11 @@ export function InstancesPanel() {
               return (
                 <label
                   key={field.key}
-                  className="flex items-center justify-between rounded-md border border-slate-200 bg-white px-2 py-1.5 text-sm"
+                  className="flex items-center justify-between rounded-md border border-slate-200 bg-white px-2 py-1 text-xs"
                 >
-                  <span className="text-slate-700">{field.label}</span>
+                  <span className="font-medium text-slate-700">{field.label}</span>
                   <select
-                    className="rounded border border-slate-300 px-2 py-1 text-xs text-slate-700"
+                    className="rounded border border-slate-300 px-2 py-0.5 text-xs text-slate-700"
                     value={current}
                     onChange={(event) => {
                       const choice = event.target.value;
@@ -267,7 +260,7 @@ export function InstancesPanel() {
                       setOverride(selectedInstance.id, field.key, choice === "true");
                     }}
                   >
-                    <option value="base">Use base</option>
+                    <option value="base">Base</option>
                     <option value="true">On</option>
                     <option value="false">Off</option>
                   </select>

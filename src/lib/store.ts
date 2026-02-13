@@ -73,6 +73,13 @@ const toEffectiveMeasurements = (
 const sanitizeNumber = (value: number, fallback: number): number =>
   Number.isFinite(value) ? value : fallback;
 
+const normalizedToggleState = (closeWaistShaping: boolean, reducedDarting: boolean) => {
+  if (reducedDarting) {
+    return { closeWaistShaping: false, reducedDarting: true };
+  }
+  return { closeWaistShaping: true, reducedDarting: false };
+};
+
 export type PatternStudioStore = ProjectState & {
   setBaseMeasurement: (key: keyof BaseMeasurements, value: number | boolean) => void;
   setSelectedInstance: (id: string) => void;
@@ -100,6 +107,19 @@ export const usePatternStore = create<PatternStudioStore>((set, get) => ({
     set((state) => {
       const current = state.base[key];
       if (typeof current === "boolean") {
+        if (key === "closeWaistShaping" || key === "reducedDarting") {
+          const toggles =
+            key === "closeWaistShaping"
+              ? normalizedToggleState(Boolean(value), !Boolean(value))
+              : normalizedToggleState(!Boolean(value), Boolean(value));
+          return {
+            base: {
+              ...state.base,
+              ...toggles,
+            },
+          };
+        }
+
         return {
           base: {
             ...state.base,
@@ -190,6 +210,22 @@ export const usePatternStore = create<PatternStudioStore>((set, get) => ({
             ? Boolean(value)
             : sanitizeNumber(Number(value), Number(baseValue));
 
+        if (key === "closeWaistShaping" || key === "reducedDarting") {
+          const toggles =
+            key === "closeWaistShaping"
+              ? normalizedToggleState(Boolean(normalizedValue), !Boolean(normalizedValue))
+              : normalizedToggleState(!Boolean(normalizedValue), Boolean(normalizedValue));
+
+          return {
+            ...instance,
+            overrides: {
+              ...instance.overrides,
+              closeWaistShaping: toggles.closeWaistShaping,
+              reducedDarting: toggles.reducedDarting,
+            },
+          };
+        }
+
         return {
           ...instance,
           overrides: {
@@ -220,19 +256,49 @@ export const usePatternStore = create<PatternStudioStore>((set, get) => ({
 
   hydrateFromProject: (next) => {
     set(() => {
+      const baseToggles = normalizedToggleState(
+        Boolean(next.base.closeWaistShaping),
+        Boolean(next.base.reducedDarting),
+      );
       const instances = next.instances.length > 0 ? next.instances : [createInstance(0)];
+      const normalizedInstances = instances.map((instance) => {
+        const hasCloseOverride = typeof instance.overrides.closeWaistShaping === "boolean";
+        const hasReducedOverride = typeof instance.overrides.reducedDarting === "boolean";
+
+        if (!hasCloseOverride && !hasReducedOverride) {
+          return instance;
+        }
+
+        const sourceClose = hasCloseOverride
+          ? Boolean(instance.overrides.closeWaistShaping)
+          : !Boolean(instance.overrides.reducedDarting);
+        const sourceReduced = hasReducedOverride
+          ? Boolean(instance.overrides.reducedDarting)
+          : !Boolean(instance.overrides.closeWaistShaping);
+        const normalized = normalizedToggleState(sourceClose, sourceReduced);
+
+        return {
+          ...instance,
+          overrides: {
+            ...instance.overrides,
+            closeWaistShaping: normalized.closeWaistShaping,
+            reducedDarting: normalized.reducedDarting,
+          },
+        };
+      });
       const selectedExists = instances.some((instance) => instance.id === next.ui.selectedInstanceId);
 
       return {
         base: {
           ...defaultBase,
           ...next.base,
+          ...baseToggles,
         },
-        instances,
+        instances: normalizedInstances,
         ui: {
           ...defaultUi,
           ...next.ui,
-          selectedInstanceId: selectedExists ? next.ui.selectedInstanceId : instances[0].id,
+          selectedInstanceId: selectedExists ? next.ui.selectedInstanceId : normalizedInstances[0].id,
         },
       };
     });

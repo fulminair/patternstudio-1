@@ -90,16 +90,16 @@ export default function HomePage() {
       />
 
       <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
-        <aside className="h-[42vh] w-full shrink-0 border-b border-slate-200 bg-slate-50 lg:h-auto lg:w-[390px] lg:border-b-0 lg:border-r">
-          <div className="h-full overflow-y-auto p-4">
-            <div className="space-y-6">
+        <aside className="w-full shrink-0 border-b border-slate-200 bg-slate-50 lg:w-[520px] lg:border-b-0 lg:border-r xl:w-[560px]">
+          <div className="p-4 lg:p-5">
+            <div className="space-y-4">
               <MeasurementsPanel />
               <InstancesPanel />
             </div>
           </div>
         </aside>
 
-        <main className="min-h-0 flex-1 p-4">
+        <main className="min-h-[60vh] flex-1 p-4">
           <PatternCanvas
             scenes={scenes}
             showGrid={ui.showGrid}
