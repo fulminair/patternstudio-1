@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "PatternStudio",
   description:
-    "Interactive SVG drafting workspace for Aldrich, Armstrong, and Hofenbitzer patterns",
+    "Interactive SVG drafting workspace for Aldrich, Armstrong, and Hofenbitzer pattern drafting",
 };
 
 export default function RootLayout({

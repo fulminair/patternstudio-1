@@ -368,7 +368,7 @@ export function PatternCanvas({
                     <path
                       d={cleanupTraceD}
                       stroke="currentColor"
-                      strokeWidth={0.56}
+                      strokeWidth={0.62}
                       vectorEffect="non-scaling-stroke"
                     />
                   ) : null}
@@ -378,7 +378,7 @@ export function PatternCanvas({
                       key={`${instance.instanceId}-${path.id}`}
                       d={path.d}
                       stroke={path.stroke}
-                      strokeWidth={Math.max(path.strokeWidth * 1.6, 0.52)}
+                      strokeWidth={Math.max(path.strokeWidth * 1.75, 0.58)}
                       strokeDasharray={showCleanUp ? undefined : path.dashed ? "0.9 0.6" : undefined}
                       vectorEffect="non-scaling-stroke"
                     />
