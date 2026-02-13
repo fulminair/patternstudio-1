@@ -520,7 +520,6 @@ export const buildScene = (measurements: EffectiveMeasurements): PatternScene =>
   const waistAxisPointRaw = intersectLineWithVertical(line5, pointC, p32.x);
   const waistAxisPoint = waistAxisPointRaw ?? waistLinePointAtX(p32.x);
 
-  addLine("waist-drop-guide-5-c", p5, pc, { strokeWidth: 0.2 });
   if (pb) {
     addLine("front-armhole-guideline-22-b", p22, pb, { dashed: true, strokeWidth: 0.18 });
   }
@@ -653,17 +652,19 @@ export const buildScene = (measurements: EffectiveMeasurements): PatternScene =>
     addLine("back-waist-dart-bisector", p17, pd, { dashed: true, strokeWidth: 0.18 });
   }
 
+  let frontDartBaseLeft: PatternPoint | null = null;
+  let frontDartBaseRight: PatternPoint | null = null;
   if (pe && measurements.frontWaistDart > 0.0001) {
     const frontDartHalf = measurements.frontWaistDart / 2;
-    const dartBaseLeft = point(pe.x - frontDartHalf, pe.y);
-    const dartBaseRight = point(pe.x + frontDartHalf, pe.y);
+    frontDartBaseLeft = point(pe.x - frontDartHalf, pe.y);
+    frontDartBaseRight = point(pe.x + frontDartHalf, pe.y);
     const frontBackOff = isFiniteNumber(measurements.frontWaistDartBackOff)
       ? measurements.frontWaistDartBackOff
       : 2.5;
     const frontDartApex = point(pe.x, p26.y + frontBackOff);
 
-    addLine("front-waist-dart-left", dartBaseLeft, frontDartApex);
-    addLine("front-waist-dart-right", dartBaseRight, frontDartApex);
+    addLine("front-waist-dart-left", frontDartBaseLeft, frontDartApex);
+    addLine("front-waist-dart-right", frontDartBaseRight, frontDartApex);
     addLine("front-waist-dart-bisector", frontDartApex, pe, {
       dashed: true,
       strokeWidth: 0.18,
@@ -675,24 +676,61 @@ export const buildScene = (measurements: EffectiveMeasurements): PatternScene =>
   const hasFrontSideDart = isFiniteNumber(measurements.frontSideWaistDart) && measurements.frontSideWaistDart > 0.0001;
   const hasBackSideDart = isFiniteNumber(measurements.backSideWaistDart) && measurements.backSideWaistDart > 0.0001;
 
+  let sideLeftBase: PatternPoint | null = null;
+  let sideRightBase: PatternPoint | null = null;
+
   if (hasBackSideDart) {
-    const sideLeftBase = waistLinePointAtX(waistAxisPoint.x - measurements.backSideWaistDart);
+    sideLeftBase = waistLinePointAtX(waistAxisPoint.x - measurements.backSideWaistDart);
     addLine("back-side-waist-dart", sideLeftBase, p32);
-    addLine("back-waist-line-5-side", p5, sideLeftBase);
   }
 
   if (hasFrontSideDart) {
-    const sideRightBase = waistLinePointAtX(waistAxisPoint.x + measurements.frontSideWaistDart);
+    sideRightBase = waistLinePointAtX(waistAxisPoint.x + measurements.frontSideWaistDart);
     addLine("front-side-waist-dart", sideRightBase, p32);
-    addLine("front-waist-line-c-side", pc, sideRightBase);
   }
 
+  let backDartBaseLeft: PatternPoint | null = null;
+  let backDartBaseRight: PatternPoint | null = null;
   if (pd && measurements.backWaistDart > 0.0001) {
     const backHalf = measurements.backWaistDart / 2;
-    const backLeftBase = point(pd.x - backHalf, pd.y);
-    const backRightBase = point(pd.x + backHalf, pd.y);
-    addLine("back-waist-dart-left", backLeftBase, p17);
-    addLine("back-waist-dart-right", backRightBase, p17);
+    backDartBaseLeft = point(pd.x - backHalf, pd.y);
+    backDartBaseRight = point(pd.x + backHalf, pd.y);
+    addLine("back-waist-dart-left", backDartBaseLeft, p17);
+    addLine("back-waist-dart-right", backDartBaseRight, p17);
+  }
+
+  // Waist seam redraw:
+  // Remove direct 5-c and stitch through dart legs and side-dart bases.
+  if (backDartBaseLeft) {
+    addLine("waist-seam-5-to-back-dart-left", p5, backDartBaseLeft);
+  } else if (backDartBaseRight) {
+    addLine("waist-seam-5-to-back-dart-right", p5, backDartBaseRight);
+  } else if (sideLeftBase) {
+    addLine("waist-seam-5-to-side-left", p5, sideLeftBase);
+  }
+
+  if (backDartBaseRight && sideLeftBase) {
+    addLine("waist-seam-back-dart-right-to-side-left", backDartBaseRight, sideLeftBase);
+  } else if (backDartBaseRight && sideRightBase) {
+    addLine("waist-seam-back-dart-right-to-side-right", backDartBaseRight, sideRightBase);
+  }
+
+  if (sideRightBase && frontDartBaseLeft) {
+    addLine("waist-seam-side-right-to-front-dart-left", sideRightBase, frontDartBaseLeft);
+  } else if (sideLeftBase && frontDartBaseLeft) {
+    addLine("waist-seam-side-left-to-front-dart-left", sideLeftBase, frontDartBaseLeft);
+  }
+
+  if (frontDartBaseRight) {
+    addLine("waist-seam-front-dart-right-to-c", frontDartBaseRight, pc);
+  } else if (frontDartBaseLeft) {
+    addLine("waist-seam-front-dart-left-to-c", frontDartBaseLeft, pc);
+  } else if (sideRightBase) {
+    addLine("waist-seam-side-right-to-c", sideRightBase, pc);
+  } else if (sideLeftBase) {
+    addLine("waist-seam-side-left-to-c", sideLeftBase, pc);
+  } else {
+    addLine("waist-seam-5-to-c", p5, pc);
   }
 
   addLine("back-blade-line-10-1", p10, p1);
