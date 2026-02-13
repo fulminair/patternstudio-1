@@ -874,7 +874,7 @@ export const buildScene = (
   labels.push(
     {
       id: "front-cf",
-      text: `CF (D-B) ${fmt(distanceIn(frontD, frontB))} in`,
+      text: `CF ${fmt(distanceIn(frontD, frontB))} in`,
       x: round2((pointCm(frontD).x + pointCm(frontB).x) / 2 + 0.8),
       y: round2((pointCm(frontD).y + pointCm(frontB).y) / 2),
       color: "currentColor",
@@ -888,7 +888,7 @@ export const buildScene = (
     },
     {
       id: "back-cb",
-      text: `CB (D-B) ${fmt(distanceIn(backD, backB))} in`,
+      text: `CB ${fmt(distanceIn(backD, backB))} in`,
       x: round2((pointCm(backD).x + pointCm(backB).x) / 2 - 1),
       y: round2((pointCm(backD).y + pointCm(backB).y) / 2),
       color: "currentColor",

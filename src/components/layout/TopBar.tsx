@@ -1,11 +1,13 @@
 "use client";
 
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   AUTHOR_ORDER,
   AVAILABLE_PATTERNS,
   UPCOMING_PATTERNS,
   type ActivePatternId,
+  type PatternAuthor,
 } from "@/lib/patternCatalog";
 
 type TopBarProps = {
@@ -28,6 +30,13 @@ export function TopBar({
   onToggleExportSelectedOnly,
 }: TopBarProps) {
   const router = useRouter();
+
+  const activePatternEntry = useMemo(
+    () => AVAILABLE_PATTERNS.find((pattern) => pattern.id === activePattern) ?? AVAILABLE_PATTERNS[0],
+    [activePattern],
+  );
+  const [mobileAuthor, setMobileAuthor] = useState<PatternAuthor>(activePatternEntry.author);
+
   const handlePatternChange = (value: string) => {
     const next = AVAILABLE_PATTERNS.find((option) => option.id === value);
     if (next) {
@@ -37,6 +46,16 @@ export function TopBar({
 
   const statusLabel = (status: "almostReady" | "comingSoon"): string =>
     status === "almostReady" ? "Almost ready" : "Coming soon";
+
+  const mobileAvailablePatterns = useMemo(
+    () => AVAILABLE_PATTERNS.filter((pattern) => pattern.author === mobileAuthor),
+    [mobileAuthor],
+  );
+  const mobileUpcomingPatterns = useMemo(
+    () => UPCOMING_PATTERNS.filter((pattern) => pattern.author === mobileAuthor),
+    [mobileAuthor],
+  );
+  const mobilePatternValue = activePatternEntry.author === mobileAuthor ? activePatternEntry.id : "";
 
   const renderPatternOptions = () => (
     <>
@@ -134,15 +153,50 @@ export function TopBar({
         </div>
       </div>
 
-      <div className="mt-2 md:hidden">
-        <select
-          aria-label="Pattern selector"
-          value={activePattern}
-          onChange={(event) => handlePatternChange(event.target.value)}
-          className="w-full rounded-md border border-slate-300 bg-white px-2 py-1.5 text-sm font-medium text-slate-800 outline-none focus:border-slate-500"
-        >
-          {renderPatternOptions()}
-        </select>
+      <div className="mt-2 grid grid-cols-2 gap-2 md:hidden">
+        <div>
+          <label className="mb-1 block text-[11px] font-medium text-slate-600">Author</label>
+          <select
+            aria-label="Author selector"
+            value={mobileAuthor}
+            onChange={(event) => setMobileAuthor(event.target.value as PatternAuthor)}
+            className="w-full rounded-md border border-slate-300 bg-white px-2 py-1.5 text-sm font-medium text-slate-800 outline-none focus:border-slate-500"
+          >
+            {AUTHOR_ORDER.map((author) => (
+              <option key={author} value={author}>
+                {author}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <label className="mb-1 block text-[11px] font-medium text-slate-600">Pattern</label>
+          <select
+            aria-label="Pattern selector"
+            value={mobilePatternValue}
+            onChange={(event) => handlePatternChange(event.target.value)}
+            className="w-full rounded-md border border-slate-300 bg-white px-2 py-1.5 text-sm font-medium text-slate-800 outline-none focus:border-slate-500"
+          >
+            <option value="" disabled>
+              Select pattern
+            </option>
+            {mobileAvailablePatterns.map((pattern) => (
+              <option key={pattern.id} value={pattern.id}>
+                {`${pattern.label} (${pattern.units})`}
+              </option>
+            ))}
+            {mobileUpcomingPatterns.length > 0 ? (
+              <optgroup label="Unavailable">
+                {mobileUpcomingPatterns.map((pattern) => (
+                  <option key={pattern.id} value={pattern.id} disabled>
+                    {`${pattern.label} (${statusLabel(pattern.status)})`}
+                  </option>
+                ))}
+              </optgroup>
+            ) : null}
+          </select>
+        </div>
       </div>
     </header>
   );
