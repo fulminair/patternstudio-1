@@ -298,6 +298,15 @@ export function PatternCanvas({
     zoomSelectionRef.current.call(zoomRef.current.transform, zoomIdentity);
   };
 
+  const handleCleanUpToggle = (checked: boolean) => {
+    onToggleCleanUp(checked);
+    if (checked) {
+      onToggleGrid(false);
+      onToggleLabels(false);
+      onToggleMarkers(false);
+    }
+  };
+
   const markerTextSize = (text: string): number => {
     if (text.length <= 1) {
       return 0.32;
@@ -537,7 +546,7 @@ export function PatternCanvas({
             type="checkbox"
             className="h-3.5 w-3.5 accent-slate-900"
             checked={showCleanUp}
-            onChange={(event) => onToggleCleanUp(event.target.checked)}
+            onChange={(event) => handleCleanUpToggle(event.target.checked)}
           />
           Clean up
         </label>
