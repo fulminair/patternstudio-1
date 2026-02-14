@@ -5,6 +5,7 @@ export type ActivePatternId =
   | "armstrong"
   | "hofenbitzer"
   | "hofenbitzerCasual"
+  | "hofenbitzerContouredHipGap"
   | "hofenbitzerWideSleeve"
   | "hofenbitzerTightSleeve";
 
@@ -58,6 +59,13 @@ export const AVAILABLE_PATTERNS: AvailablePatternDefinition[] = [
     units: "cm",
   },
   {
+    id: "hofenbitzerContouredHipGap",
+    author: "Hofenbitzer",
+    label: "Hofenbitzer's Contoured Bodice (Hip Gap)",
+    href: "/hofenbitzer-contoured-hip-gap",
+    units: "cm",
+  },
+  {
     id: "hofenbitzerWideSleeve",
     author: "Hofenbitzer",
     label: "Hofenbitzer's Wide Basic Sleeve",
@@ -74,13 +82,6 @@ export const AVAILABLE_PATTERNS: AvailablePatternDefinition[] = [
 ];
 
 export const UPCOMING_PATTERNS: UpcomingPatternDefinition[] = [
-  {
-    id: "hofenbitzer-bodice-hip-gap",
-    author: "Hofenbitzer",
-    label: "Hofenbitzer's Bodice with Hip Gap",
-    status: "almostReady",
-    units: "cm",
-  },
   {
     id: "hofenbitzer-standard-trouser",
     author: "Hofenbitzer",
