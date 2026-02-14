@@ -91,6 +91,14 @@ const sanitizeLineStrokeWidth = (value: number, fallback = 1): number => {
   return Math.min(6, Math.max(0.1, Math.round(value * 100) / 100));
 };
 
+const sanitizeColor = (value: string, fallback: string): string => {
+  if (typeof value !== "string") {
+    return fallback;
+  }
+
+  return /^#[0-9a-fA-F]{6}$/.test(value) ? value : fallback;
+};
+
 type UiBooleanKey = "showGrid" | "showLabels" | "showMarkers" | "showCleanUp" | "exportSelectedOnly";
 
 export const mergeEffectiveMeasurements = (
@@ -113,6 +121,7 @@ export type HofenbitzerWideBasicSleeveStoreState = HofenbitzerWideBasicSleevePro
   addDuplicate: () => void;
   removeInstance: (id: string) => void;
   toggleVisible: (id: string) => void;
+  setInstanceColor: (id: string, color: string) => void;
   setOverride: (
     id: string,
     key: keyof HofenbitzerWideBasicSleeveBaseMeasurements,
@@ -187,6 +196,16 @@ export const useHofenbitzerWideBasicSleeveStore = create<HofenbitzerWideBasicSle
       set((state) => ({
         instances: state.instances.map((instance) =>
           instance.id === id ? { ...instance, visible: !instance.visible } : instance,
+        ),
+      }));
+    },
+
+    setInstanceColor: (id, color) => {
+      set((state) => ({
+        instances: state.instances.map((instance) =>
+          instance.id === id
+            ? { ...instance, color: sanitizeColor(color, instance.color) }
+            : instance,
         ),
       }));
     },

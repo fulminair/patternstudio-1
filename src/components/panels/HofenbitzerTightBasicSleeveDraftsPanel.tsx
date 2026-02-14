@@ -13,6 +13,7 @@ function DraftListItem({
   const setSelectedInstance = useHofenbitzerTightBasicSleeveStore((state) => state.setSelectedInstance);
   const toggleVisible = useHofenbitzerTightBasicSleeveStore((state) => state.toggleVisible);
   const removeInstance = useHofenbitzerTightBasicSleeveStore((state) => state.removeInstance);
+  const setInstanceColor = useHofenbitzerTightBasicSleeveStore((state) => state.setInstanceColor);
 
   return (
     <li
@@ -37,6 +38,16 @@ function DraftListItem({
         </button>
 
         <div className="flex items-center gap-1">
+          <label className="inline-flex h-6 w-6 items-center justify-center">
+            <span className="sr-only">{`Set color for ${draft.name}`}</span>
+            <input
+              type="color"
+              value={draft.color}
+              onChange={(event) => setInstanceColor(draft.id, event.target.value)}
+              className="h-5 w-5 cursor-pointer rounded border border-slate-300 bg-transparent p-0"
+              title={`Set color for ${draft.name}`}
+            />
+          </label>
           <button
             type="button"
             onClick={() => toggleVisible(draft.id)}
