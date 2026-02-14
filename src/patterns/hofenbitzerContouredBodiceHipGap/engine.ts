@@ -26,6 +26,8 @@ const TOP_BOUNDARY_CM = -30;
 const HIP_LEFT_OFFSET_CM = 2;
 const MIN_HANDLE_LENGTH_CM = 0.5;
 const BACK_SHOULDER_EASE_CM = 0.7;
+const FRONT_ARMHOLE_START_HANDLE_CM = 11.92;
+const FRONT_ARMHOLE_END_HANDLE_CM = 4.6;
 
 const FIT_PROFILES: readonly FitProfile[] = [
   {
@@ -340,6 +342,41 @@ const lineIntersection = (
   }
 
   return candidate;
+};
+
+const rotatePoint = (
+  point: DraftPoint,
+  pivot: DraftPoint,
+  angleRadians: number,
+): DraftPoint => {
+  const cosA = Math.cos(angleRadians);
+  const sinA = Math.sin(angleRadians);
+  const dx = point.x - pivot.x;
+  const dy = point.y - pivot.y;
+  return p(
+    pivot.x + (dx * cosA) - (dy * sinA),
+    pivot.y + (dx * sinA) + (dy * cosA),
+  );
+};
+
+const pointAlongLineByDistance = (
+  from: DraftPoint,
+  to: DraftPoint,
+  distanceCm: number,
+): DraftPoint => {
+  if (!Number.isFinite(distanceCm) || distanceCm <= 0) {
+    return p(from.x, from.y);
+  }
+
+  const dx = to.x - from.x;
+  const dy = to.y - from.y;
+  const length = Math.sqrt(dx * dx + dy * dy);
+  if (length < 1e-6) {
+    return p(from.x, from.y);
+  }
+
+  const scale = distanceCm / length;
+  return p(from.x + dx * scale, from.y + dy * scale);
 };
 
 const normalizeFitIndex = (value: number): number => {
@@ -998,6 +1035,12 @@ export const buildScene = (
   let point17: DraftPoint | null = null;
   let point17a: DraftPoint | null = null;
   let point18: DraftPoint | null = null;
+  let point31: DraftPoint | null = null;
+  let point32: DraftPoint | null = null;
+  let point33: DraftPoint | null = null;
+  let point35: DraftPoint | null = null;
+  let point36: DraftPoint | null = null;
+  let point37: DraftPoint | null = null;
   let point24: DraftPoint | null = null;
   let frontShoulderStart: DraftPoint | null = null;
   let backShoulderEnd: DraftPoint | null = null;
@@ -1041,6 +1084,13 @@ export const buildScene = (
 
     if (point16) {
       point17 = registerPoint("17", p((point16.x + point10.x) / 2 - 1, (point16.y + point10.y) / 2));
+
+      const halfBackShoulderDart = Math.max(0, measurements.BackShoulderDartIntake) / 2;
+      if (halfBackShoulderDart > 0.001) {
+        point35 = registerPoint("35", p(point17.x, point17.y - halfBackShoulderDart));
+        point36 = registerPoint("36", p(point17.x, point17.y + halfBackShoulderDart));
+      }
+
       point17a = registerPoint(
         "17a",
         p((point17.x + point10.x) / 2 - 1.5, (point17.y + point10.y) / 2),
@@ -1059,56 +1109,50 @@ export const buildScene = (
         strokeWidth: 0.18,
       });
 
-      let backArmholeStart = backShoulderEnd;
-      const halfBackShoulderDart = Math.max(0, measurements.BackShoulderDartIntake) / 2;
-      if (halfBackShoulderDart > 0.001) {
-        const point35 = registerPoint("35", p(point16.x - halfBackShoulderDart, point16.y));
-        const point36 = registerPoint("36", p(point16.x + halfBackShoulderDart, point16.y));
-        addLine("back-shoulder-dart-base", point35, point36, {
-          kind: "pattern",
-          strokeWidth: 0.24,
+      const point32Offset = measurements.BrCFinal / 20 + 1;
+      if (Number.isFinite(point32Offset)) {
+        point32 = registerPoint("32", p(point18.x + point32Offset, point18.y));
+        addLine("shoulder-dart-guide-line", point32, p(point32.x, point32.y - 15), {
+          dashed: true,
+          kind: "construction",
+          strokeWidth: 0.18,
         });
-        addLine("back-shoulder-dart-left", point35, point17, {
-          kind: "pattern",
-          strokeWidth: 0.24,
-        });
-        addLine("back-shoulder-dart-right", point36, point17, {
-          kind: "pattern",
-          strokeWidth: 0.24,
-        });
-        backArmholeStart = point36;
       }
 
-      const backCurveHandles = buildBackArmholeHandles(
-        backArmholeStart,
-        point17,
-        point17a,
-        point11,
-        point4,
-      );
+      const backArmholeStart = point36 ?? backShoulderEnd;
 
-      if (backCurveHandles) {
-        addMultiCubic(
-          "back-armhole-curve",
-          [
-            {
-              start: backArmholeStart,
-              c1: backCurveHandles.startHandle,
-              c2: backCurveHandles.midIncoming,
-              end: point17,
-            },
-            {
-              start: point17,
-              c1: backCurveHandles.midOutgoing,
-              c2: backCurveHandles.endIncoming,
-              end: point11,
-            },
-          ],
-          {
-            kind: "pattern",
-            strokeWidth: 0.26,
-          },
+      if (backArmholeStart) {
+        const backCurveHandles = buildBackArmholeHandles(
+          backArmholeStart,
+          point17,
+          point17a,
+          point11,
+          point4,
         );
+
+        if (backCurveHandles) {
+          addMultiCubic(
+            "back-armhole-curve",
+            [
+              {
+                start: backArmholeStart,
+                c1: backCurveHandles.startHandle,
+                c2: backCurveHandles.midIncoming,
+                end: point17,
+              },
+              {
+                start: point17,
+                c1: backCurveHandles.midOutgoing,
+                c2: backCurveHandles.endIncoming,
+                end: point11,
+              },
+            ],
+            {
+              kind: "pattern",
+              strokeWidth: 0.26,
+            },
+          );
+        }
       }
 
       track(frontShoulderEnd);
@@ -1258,14 +1302,6 @@ export const buildScene = (
       kind: "pattern",
       strokeWidth: 0.26,
     });
-
-    const controls = buildFrontArmholeControls(point24, point12, point13a, point20a, point14);
-    if (controls) {
-      addCubic("front-armhole-curve", point24, controls.c1, controls.c2, point12, {
-        kind: "pattern",
-        strokeWidth: 0.26,
-      });
-    }
   }
 
   if (point24 && frontShoulderStart) {
@@ -1301,6 +1337,107 @@ export const buildScene = (
   }
 
   const frontDartTop = p(point22.x, frontDartTopY);
+  point31 = registerPoint("31", frontDartTop);
+
+  let trianglePoint31 = point31;
+  let dartShoulderPoint: DraftPoint | null = point24;
+  if (point24 && point32) {
+    const pivotPoint = point22;
+    const relX = point24.x - pivotPoint.x;
+    const relY = point24.y - pivotPoint.y;
+    const radius = Math.sqrt(relX * relX + relY * relY);
+    if (radius > 1e-6) {
+      let desiredCos = (point32.x - pivotPoint.x) / radius;
+      desiredCos = clamp(desiredCos, -1, 1);
+      const baseAngle = Math.atan2(relY, relX);
+      const acosValue = Math.acos(desiredCos);
+      if (Number.isFinite(acosValue)) {
+        const candidateAngles = [acosValue, -acosValue];
+        let bestRotation: number | null = null;
+        let bestDiffX = Number.POSITIVE_INFINITY;
+        let bestShoulder: DraftPoint | null = null;
+
+        for (const targetAngle of candidateAngles) {
+          const rotationCandidate = targetAngle - baseAngle;
+          const rotatedShoulderCandidate = rotatePoint(point24, pivotPoint, rotationCandidate);
+          const diffX = Math.abs(rotatedShoulderCandidate.x - point32.x);
+
+          if (
+            bestRotation === null ||
+            diffX < bestDiffX - 1e-6 ||
+            (Math.abs(diffX - bestDiffX) <= 1e-6 && Math.abs(rotationCandidate) < Math.abs(bestRotation))
+          ) {
+            bestRotation = rotationCandidate;
+            bestDiffX = diffX;
+            bestShoulder = rotatedShoulderCandidate;
+          }
+        }
+
+        if (bestRotation !== null && bestShoulder) {
+          dartShoulderPoint = bestShoulder;
+          trianglePoint31 = rotatePoint(point31, pivotPoint, bestRotation);
+        }
+      }
+    }
+  }
+
+  if (dartShoulderPoint) {
+    addPolyline(
+      "front-shoulder-dart-triangle",
+      [point22, trianglePoint31, dartShoulderPoint, point22],
+      {
+        kind: "pattern",
+        strokeWidth: 0.24,
+      },
+    );
+
+    if (!point24 || distanceBetween(dartShoulderPoint, point24) > 0.001) {
+      point33 = registerPoint("33", dartShoulderPoint);
+    }
+  }
+
+  const frontArmholeStart = point33 ?? point24;
+  if (frontArmholeStart) {
+    if (point33) {
+      const startHandlePoint = pointAlongLineByDistance(
+        point33,
+        point22,
+        FRONT_ARMHOLE_START_HANDLE_CM,
+      );
+      const endHandlePoint = pointAlongLineByDistance(
+        point12,
+        point13,
+        FRONT_ARMHOLE_END_HANDLE_CM,
+      );
+
+      addCubic(
+        "front-armhole-curve",
+        point33,
+        startHandlePoint,
+        endHandlePoint,
+        point12,
+        {
+          kind: "pattern",
+          strokeWidth: 0.26,
+        },
+      );
+    } else {
+      const controls = buildFrontArmholeControls(
+        frontArmholeStart,
+        point12,
+        point13a,
+        point20a,
+        point14,
+      );
+      if (controls) {
+        addCubic("front-armhole-curve", frontArmholeStart, controls.c1, controls.c2, point12, {
+          kind: "pattern",
+          strokeWidth: 0.26,
+        });
+      }
+    }
+  }
+
   const frontDartBottom = p(point22.x, hemLineY);
 
   const shiftDown = (baseY: number, length: number): number =>
@@ -1377,6 +1514,36 @@ export const buildScene = (
   }
 
   const point34 = registerPoint("34", p((point7.x + point10.x) / 2, waistLineY));
+
+  if (point17) {
+    point37 = registerPoint("37", p(point34.x, point17.y));
+  } else {
+    point37 = registerPoint("37", p(point34.x, topLineY));
+  }
+
+  if (backShoulderEnd && point37) {
+    const point38OnShoulder =
+      intersectLineSegmentWithVertical(point1a, backShoulderEnd, point34.x) ??
+      p(point34.x, point37.y);
+    registerPoint("38", point38OnShoulder);
+  } else if (point37) {
+    registerPoint("38", p(point34.x, point37.y));
+  }
+
+  if (point35 && point37) {
+    addLine("back-armhole-dart-line-35-37", point35, point37, {
+      kind: "pattern",
+      strokeWidth: 0.24,
+    });
+  }
+
+  if (point36 && point37) {
+    addLine("back-armhole-dart-line-36-37", point36, point37, {
+      kind: "pattern",
+      strokeWidth: 0.24,
+    });
+  }
+
   const bustIntersectionY = point4.y;
   const sideShareEach = measurements.waistSideShare / 2;
   const backArmHalfShare = measurements.waistBackArmShare / 2;
