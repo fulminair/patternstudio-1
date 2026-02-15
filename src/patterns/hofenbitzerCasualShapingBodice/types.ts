@@ -27,6 +27,7 @@ export type HofenbitzerCasualShapingMeasurements = {
   BrD: number;
   ShoulderDifference: number;
   WaistShaping: number;
+  FrontShoulderDartPosition: number;
 };
 
 export type HofenbitzerCasualShapingBaseMeasurements = HofenbitzerCasualShapingMeasurements;

@@ -88,6 +88,7 @@ const numericKeys: Array<keyof HofenbitzerCasualShapingBaseMeasurements> = [
   "BrD",
   "ShoulderDifference",
   "WaistShaping",
+  "FrontShoulderDartPosition",
 ];
 
 const sanitizeNumber = (value: number, fallback: number): number =>

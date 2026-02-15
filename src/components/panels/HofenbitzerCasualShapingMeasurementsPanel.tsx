@@ -57,6 +57,7 @@ const fieldConfig: Record<EditableKey, FieldConfig> = {
   BrD: { label: "BrD", min: 8, max: 45, step: 0.1 },
   ShoulderDifference: { label: "Shoulder Diff. (deg)", min: 0, max: 12, step: 0.1 },
   WaistShaping: { label: "Waist Shaping", min: 0.5, max: 1.5, step: 0.1 },
+  FrontShoulderDartPosition: { label: "Front Dart Size", min: 0, max: 100, step: 0.1 },
 };
 
 const tripletRows: TripletRow[] = [
@@ -262,6 +263,16 @@ export function HofenbitzerCasualShapingMeasurementsPanel() {
                 ))}
               </select>
             </div>
+            <div className="col-span-3 rounded-md border border-slate-200 bg-white px-2 py-2">
+              <EditableNumberField
+                value={selectedMeasurements.FrontShoulderDartPosition}
+                label={fieldConfig.FrontShoulderDartPosition.label}
+                min={fieldConfig.FrontShoulderDartPosition.min}
+                max={fieldConfig.FrontShoulderDartPosition.max}
+                step={fieldConfig.FrontShoulderDartPosition.step}
+                onCommit={(next) => commitMeasurement("FrontShoulderDartPosition", next)}
+              />
+            </div>
           </div>
 
           <div className="space-y-2">
@@ -346,6 +357,9 @@ export function HofenbitzerCasualShapingMeasurementsPanel() {
                 step={fieldConfig.ShoulderDifference.step}
                 onCommit={(next) => commitMeasurement("ShoulderDifference", next)}
               />
+            </div>
+
+            <div className="grid grid-cols-3 gap-2">
               <EditableNumberField
                 value={selectedMeasurements.WaistShaping}
                 label={fieldConfig.WaistShaping.label}

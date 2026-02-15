@@ -152,6 +152,7 @@ const DEFAULT_BASE_MEASUREMENTS: HofenbitzerCasualShapingBaseMeasurements = {
   BrD: 28.1,
   ShoulderDifference: 2,
   WaistShaping: 1,
+  FrontShoulderDartPosition: 0.5,
 };
 
 const round2 = (value: number): number => Math.round(value * 100) / 100;
@@ -277,6 +278,15 @@ const clamp = (value: number, min: number, max: number): number => {
     return min;
   }
   return Math.min(max, Math.max(min, value));
+};
+
+const normalizeFrontShoulderDartPosition = (value: number): number => {
+  if (!Number.isFinite(value)) {
+    return 0.5;
+  }
+
+  const normalized = value > 1 ? value / 100 : value;
+  return clamp(normalized, 0, 1);
 };
 
 const rotatePoint = (
@@ -876,6 +886,9 @@ export const buildScene = (
     0.5,
     1.5,
   );
+  const frontShoulderDartPosition = normalizeFrontShoulderDartPosition(
+    measurements.FrontShoulderDartPosition,
+  );
 
   const point1 = registerPoint("1", p(RIGHT_BOUNDARY_CM - 10, TOP_BOUNDARY_CM + 10));
 
@@ -1360,7 +1373,7 @@ export const buildScene = (
   let trianglePoint31 = point31;
   let point33: DraftPoint | null = point24;
   if (point22 && point24 && point31 && point32) {
-    const targetX = (point32.x + point13.x) / 2;
+    const targetX = point13.x + (point32.x - point13.x) * frontShoulderDartPosition;
     const relX = point24.x - point22.x;
     const relY = point24.y - point22.y;
     const radius = Math.sqrt(relX * relX + relY * relY);

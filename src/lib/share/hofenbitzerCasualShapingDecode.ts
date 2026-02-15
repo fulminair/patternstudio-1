@@ -35,6 +35,7 @@ const MEASUREMENT_KEYS: Array<keyof HofenbitzerCasualShapingBaseMeasurements> = 
   "BrD",
   "ShoulderDifference",
   "WaistShaping",
+  "FrontShoulderDartPosition",
 ];
 
 const isObject = (value: unknown): value is Record<string, unknown> =>
