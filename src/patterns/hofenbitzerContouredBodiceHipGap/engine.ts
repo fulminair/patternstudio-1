@@ -379,6 +379,82 @@ const pointAlongLineByDistance = (
   return p(from.x + dx * scale, from.y + dy * scale);
 };
 
+const intersectSegmentWithHorizontal = (
+  a: DraftPoint,
+  b: DraftPoint,
+  targetY: number,
+): DraftPoint | null => {
+  const epsilon = 1e-6;
+  const minY = Math.min(a.y, b.y);
+  const maxY = Math.max(a.y, b.y);
+  if (targetY < minY - epsilon || targetY > maxY + epsilon) {
+    if (Math.abs(targetY - minY) > epsilon || Math.abs(targetY - maxY) > epsilon) {
+      return null;
+    }
+  }
+
+  const dy = b.y - a.y;
+  const dx = b.x - a.x;
+  if (Math.abs(dy) < epsilon) {
+    if (Math.abs(targetY - a.y) > epsilon) {
+      return null;
+    }
+    return p(Math.max(a.x, b.x), targetY);
+  }
+
+  let t = (targetY - a.y) / dy;
+  if (t < -epsilon || t > 1 + epsilon) {
+    return null;
+  }
+  t = clamp(t, 0, 1);
+  return p(a.x + dx * t, targetY);
+};
+
+const horizontalIntersectionToLeft = (
+  polygonPoints: DraftPoint[],
+  referencePoint: DraftPoint,
+): DraftPoint | null => {
+  if (polygonPoints.length < 2) {
+    return null;
+  }
+
+  let best: DraftPoint | null = null;
+  for (let index = 0; index < polygonPoints.length; index += 1) {
+    const current = polygonPoints[index];
+    const next = polygonPoints[(index + 1) % polygonPoints.length];
+    const intersection = intersectSegmentWithHorizontal(current, next, referencePoint.y);
+    if (!intersection) {
+      continue;
+    }
+
+    if (intersection.x <= referencePoint.x + 1e-6) {
+      if (!best || intersection.x > best.x) {
+        best = intersection;
+      }
+    }
+  }
+
+  return best;
+};
+
+const findTopRightPoint = (polygonPoints: DraftPoint[]): DraftPoint | null => {
+  if (!polygonPoints.length) {
+    return null;
+  }
+
+  const epsilon = 1e-6;
+  let topRight = polygonPoints[0];
+  for (const candidate of polygonPoints) {
+    if (
+      candidate.y < topRight.y - epsilon ||
+      (Math.abs(candidate.y - topRight.y) <= epsilon && candidate.x > topRight.x + epsilon)
+    ) {
+      topRight = candidate;
+    }
+  }
+  return topRight;
+};
+
 const normalizeFitIndex = (value: number): number => {
   if (!Number.isFinite(value)) {
     return DEFAULT_BASE_MEASUREMENTS.FitIndex;
@@ -427,6 +503,30 @@ const bezierDerivative = (
     3 * mt * mt * (p1.x - p0.x) + 6 * mt * t * (p2.x - p1.x) + 3 * t * t * (p3.x - p2.x),
     3 * mt * mt * (p1.y - p0.y) + 6 * mt * t * (p2.y - p1.y) + 3 * t * t * (p3.y - p2.y),
   );
+};
+
+const intersectCubicWithHorizontalApprox = (
+  p0: DraftPoint,
+  p1: DraftPoint,
+  p2: DraftPoint,
+  p3: DraftPoint,
+  targetY: number,
+): DraftPoint | null => {
+  const steps = 120;
+  let best: DraftPoint | null = null;
+  let previous = bezierPoint(0, p0, p1, p2, p3);
+
+  for (let index = 1; index <= steps; index += 1) {
+    const t = index / steps;
+    const current = bezierPoint(t, p0, p1, p2, p3);
+    const segmentHit = intersectSegmentWithHorizontal(previous, current, targetY);
+    if (segmentHit && (!best || segmentHit.x > best.x)) {
+      best = segmentHit;
+    }
+    previous = current;
+  }
+
+  return best;
 };
 
 const buildBulgedCubicControls = (
@@ -1015,6 +1115,11 @@ export const buildScene = (
   });
 
   const point3 = registerPoint("3", p(point2.x, point2.y + measurements.MoL));
+  addLine("line-1-3", point1, point3, {
+    dashed: true,
+    kind: "construction",
+    strokeWidth: 0.18,
+  });
   const point4 = registerPoint("4", p(point2.x, point2.y + measurements.AhDPlus));
   const point5 = registerPoint("5", p(point2.x, point2.y + measurements.BLFinal));
   const point6 = registerPoint("6", p(point5.x, point5.y + measurements.HiD));
@@ -1041,6 +1146,11 @@ export const buildScene = (
   let point35: DraftPoint | null = null;
   let point36: DraftPoint | null = null;
   let point37: DraftPoint | null = null;
+  let point38: DraftPoint | null = null;
+  let pointA: DraftPoint | null = null;
+  let backShoulderDartOtherUpperTip: DraftPoint | null = null;
+  let rotatedPoint16ForCurve: DraftPoint | null = null;
+  let combinedBackShoulderDartDrawn = false;
   let point24: DraftPoint | null = null;
   let frontShoulderStart: DraftPoint | null = null;
   let backShoulderEnd: DraftPoint | null = null;
@@ -1119,42 +1229,6 @@ export const buildScene = (
         });
       }
 
-      const backArmholeStart = point36 ?? backShoulderEnd;
-
-      if (backArmholeStart) {
-        const backCurveHandles = buildBackArmholeHandles(
-          backArmholeStart,
-          point17,
-          point17a,
-          point11,
-          point4,
-        );
-
-        if (backCurveHandles) {
-          addMultiCubic(
-            "back-armhole-curve",
-            [
-              {
-                start: backArmholeStart,
-                c1: backCurveHandles.startHandle,
-                c2: backCurveHandles.midIncoming,
-                end: point17,
-              },
-              {
-                start: point17,
-                c1: backCurveHandles.midOutgoing,
-                c2: backCurveHandles.endIncoming,
-                end: point11,
-              },
-            ],
-            {
-              kind: "pattern",
-              strokeWidth: 0.26,
-            },
-          );
-        }
-      }
-
       track(frontShoulderEnd);
     }
   }
@@ -1163,105 +1237,15 @@ export const buildScene = (
   const waistLineY = point5.y;
   const hipLineY = point6.y;
   const hemLineY = point3.y;
+  const marker39 = registerPoint("39", p(point11.x, waistLineY - 1));
+  const marker40 = registerPoint("40", p(point12.x, waistLineY - 1));
 
   const point19 = registerPoint("19", p(point14.x, waistLineY));
 
-  let backDiagVec: { x: number; y: number } | null = {
-    x: point6a.x - point2.x,
-    y: point6a.y - point2.y,
-  };
-
-  if (Math.abs(backDiagVec.x) > 0.0001 || Math.abs(backDiagVec.y) > 0.0001) {
-    const point25 = extendLineToY(
-      point11,
-      p(point11.x + backDiagVec.x, point11.y + backDiagVec.y),
-      hemLineY,
-    );
-    registerPoint("25", point25);
-    addLine("back-side-straightening", point11, point25, {
-      dashed: true,
-      kind: "construction",
-      strokeWidth: 0.18,
-    });
-  } else {
-    backDiagVec = null;
-  }
-
-  registerPoint("26", p(point11.x, hipLineY));
-  registerPoint("27", p(point12.x, hipLineY));
-
-  if (backDiagVec) {
-    registerPoint(
-      "28",
-      extendLineToY(
-        point11,
-        p(point11.x + backDiagVec.x, point11.y + backDiagVec.y),
-        hipLineY,
-      ),
-    );
-  } else {
-    registerPoint("28", p(point11.x, hipLineY));
-  }
-
   const hiDiffHalf = Math.abs(measurements.HiDiff) / 2;
-  const point29 = registerPoint("29", p(point12.x + hiDiffHalf, hipLineY));
-  const point30 = registerPoint("30", p(point11.x - hiDiffHalf, hipLineY));
-
-  const perpendicularFootOnBackDiagonal = (source: DraftPoint): DraftPoint | null => {
-    const diagX = point8.x - point2.x;
-    const diagY = point8.y - point2.y;
-    const diagLengthSq = diagX * diagX + diagY * diagY;
-    if (diagLengthSq < 1e-6) {
-      return null;
-    }
-
-    const t = ((source.x - point2.x) * diagX + (source.y - point2.y) * diagY) / diagLengthSq;
-    return p(point2.x + diagX * t, point2.y + diagY * t);
-  };
-
-  const point30Hem = extendLineToY(point11, point30, hemLineY);
-  const point30Waist = extendLineToY(point11, point30, waistLineY);
-
-  addLine("back-side-line-1", point11, point30Hem, {
-    kind: "pattern",
-    strokeWidth: 0.26,
-  });
-
-  let hipLinePointBack = perpendicularFootOnBackDiagonal(point30);
-  if (!hipLinePointBack) {
-    hipLinePointBack = p(point8.x, hipLineY);
-  }
-
-  addLine("back-hip-line", point30, hipLinePointBack, {
-    dashed: true,
-    kind: "construction",
-    strokeWidth: 0.18,
-  });
-
-  const hemConnectorEnd = perpendicularFootOnBackDiagonal(point30Hem);
-  if (hemConnectorEnd) {
-    addLine("back-hem-line", point30Hem, hemConnectorEnd, {
-      kind: "pattern",
-      strokeWidth: 0.26,
-    });
-  }
-
-  const waistConnectorEnd = perpendicularFootOnBackDiagonal(point30Waist);
-  if (waistConnectorEnd) {
-    addLine("back-waist-line", point30Waist, waistConnectorEnd, {
-      dashed: true,
-      kind: "construction",
-      strokeWidth: 0.18,
-    });
-  }
+  const point29 = p(point12.x + hiDiffHalf, hipLineY);
 
   addPolyline("centre-back-cb", [point2, point7, point8], {
-    kind: "pattern",
-    strokeWidth: 0.26,
-  });
-
-  const point29Hem = extendLineToY(point12, point29, hemLineY);
-  addLine("new-front-side-line", point12, point29Hem, {
     kind: "pattern",
     strokeWidth: 0.26,
   });
@@ -1271,6 +1255,11 @@ export const buildScene = (
   const point20a = registerPoint("20a", p(point20.x + measurements.NeG, point20.y));
   const point23Offset = Math.max(0, measurements.NeG + 0.5);
   const point23 = registerPoint("23", p(point20.x, point20.y + point23Offset));
+  addLine("line-20-23", point20, point23, {
+    dashed: true,
+    kind: "construction",
+    strokeWidth: 0.18,
+  });
 
   const point20Guide = p(point20.x + 20, point20.y);
   addLine("line-20-guide", point20, point20Guide, {
@@ -1324,6 +1313,11 @@ export const buildScene = (
     kind: "construction",
     strokeWidth: 0.18,
   });
+  addLine("cleanup-line-21-22", point21, point22, {
+    dashed: true,
+    kind: "cleanup",
+    strokeWidth: 0.18,
+  });
 
   let frontDartTopY = point20.y;
   if (point24) {
@@ -1338,6 +1332,10 @@ export const buildScene = (
 
   const frontDartTop = p(point22.x, frontDartTopY);
   point31 = registerPoint("31", frontDartTop);
+  addPolyline("cleanup-front-line-20a-31-22", [point20a, point31, point22], {
+    kind: "cleanup",
+    strokeWidth: 0.24,
+  });
 
   let trianglePoint31 = point31;
   let dartShoulderPoint: DraftPoint | null = point24;
@@ -1387,6 +1385,14 @@ export const buildScene = (
       [point22, trianglePoint31, dartShoulderPoint, point22],
       {
         kind: "pattern",
+        strokeWidth: 0.24,
+      },
+    );
+    addPolyline(
+      "cleanup-front-shoulder-dart-open",
+      [point22, trianglePoint31, dartShoulderPoint],
+      {
+        kind: "cleanup",
         strokeWidth: 0.24,
       },
     );
@@ -1475,9 +1481,13 @@ export const buildScene = (
   );
 
   const hiGapHalf = Math.max(0, measurements.HiGap) / 2;
+  let frontHiGapHemLeftX: number | null = null;
+  let frontHiGapHemRightX: number | null = null;
   if (hiGapHalf > 0.001) {
     const hiLeftStart = p(frontDartLengthPoint.x - hiGapHalf, frontDartLengthPoint.y);
     const hiRightStart = p(frontDartLengthPoint.x + hiGapHalf, frontDartLengthPoint.y);
+    frontHiGapHemLeftX = hiLeftStart.x;
+    frontHiGapHemRightX = hiRightStart.x;
     registerPoint("HGL", p(hiLeftStart.x, hipLineY));
     registerPoint("HGR", p(hiRightStart.x, hipLineY));
     addLine("front-hi-gap-left", hiLeftStart, p(hiLeftStart.x, hemLineY), {
@@ -1500,19 +1510,19 @@ export const buildScene = (
 
   const frontHipMarker = registerPoint("44", p(point12.x + hiDiffHalf, hipLineY));
   const backHipMarker = registerPoint("45", p(point11.x - hiDiffHalf, hipLineY));
-  if (hiDiffHalf > 0.001) {
-    addLine("front-hi-g-line", frontHipMarker, p(frontHipMarker.x, hemLineY), {
-      kind: "construction",
-      dashed: true,
-      strokeWidth: 0.18,
-    });
-    addLine("back-hi-g-line", backHipMarker, p(backHipMarker.x, hemLineY), {
-      kind: "construction",
-      dashed: true,
-      strokeWidth: 0.18,
-    });
-  }
-
+  addLine("cleanup-front-44-to-hem", frontHipMarker, p(frontHipMarker.x, hemLineY), {
+    kind: "cleanup",
+    strokeWidth: 0.24,
+  });
+  addLine("cleanup-back-45-to-hem", backHipMarker, p(backHipMarker.x, hemLineY), {
+    kind: "cleanup",
+    strokeWidth: 0.24,
+  });
+  addLine("cleanup-6a-45", point6a, backHipMarker, {
+    dashed: true,
+    kind: "cleanup",
+    strokeWidth: 0.18,
+  });
   const point34 = registerPoint("34", p((point7.x + point10.x) / 2, waistLineY));
 
   if (point17) {
@@ -1525,43 +1535,311 @@ export const buildScene = (
     const point38OnShoulder =
       intersectLineSegmentWithVertical(point1a, backShoulderEnd, point34.x) ??
       p(point34.x, point37.y);
-    registerPoint("38", point38OnShoulder);
+    point38 = registerPoint("38", point38OnShoulder);
   } else if (point37) {
-    registerPoint("38", p(point34.x, point37.y));
+    point38 = registerPoint("38", p(point34.x, point37.y));
+  }
+
+  addLine("line-34-vertical-hem-to-38", p(point34.x, hemLineY), point38 ?? p(point34.x, topLineY), {
+    dashed: true,
+    kind: "construction",
+    strokeWidth: 0.18,
+  });
+  if (point38) {
+    addLine("cleanup-back-1a-to-38", point1a, point38, {
+      kind: "cleanup",
+      strokeWidth: 0.24,
+    });
+  }
+  if (point38 && point16 && backShoulderEnd && point35 && point36 && point37) {
+    let rotatedPoint38 = point38;
+    let rotatedPoint16 = point16;
+    let rotatedBackShoulderEnd = backShoulderEnd;
+    let rotatedPoint35 = point35;
+
+    const baseVec = {
+      x: point35.x - point37.x,
+      y: point35.y - point37.y,
+    };
+    const targetVec = {
+      x: point36.x - point37.x,
+      y: point36.y - point37.y,
+    };
+    const baseLength = Math.sqrt(baseVec.x * baseVec.x + baseVec.y * baseVec.y);
+    const targetLength = Math.sqrt(targetVec.x * targetVec.x + targetVec.y * targetVec.y);
+    if (baseLength > 1e-6 && targetLength > 1e-6) {
+      const dot = baseVec.x * targetVec.x + baseVec.y * targetVec.y;
+      const det = baseVec.x * targetVec.y - baseVec.y * targetVec.x;
+      const rotateAngle = Math.atan2(det, dot);
+      rotatedPoint38 = rotatePoint(point38, point37, rotateAngle);
+      rotatedPoint16 = rotatePoint(point16, point37, rotateAngle);
+      rotatedBackShoulderEnd = rotatePoint(backShoulderEnd, point37, rotateAngle);
+      rotatedPoint35 = rotatePoint(point35, point37, rotateAngle);
+    }
+
+    // The source script snaps this corner to point 36 before drawing release.
+    rotatedPoint35 = p(point36.x, point36.y);
+
+    const releasePolygon = [
+      rotatedPoint38,
+      rotatedPoint16,
+      rotatedBackShoulderEnd,
+      rotatedPoint35,
+      point37,
+    ];
+
+    addPolyline(
+      "back-armhole-dart-release-solid",
+      [...releasePolygon, rotatedPoint38],
+      {
+        kind: "pattern",
+        strokeWidth: 0.24,
+      },
+    );
+
+    let topLeftPoint = releasePolygon[0];
+    for (const candidate of releasePolygon) {
+      if (
+        candidate.x < topLeftPoint.x - 1e-6 ||
+        (Math.abs(candidate.x - topLeftPoint.x) <= 1e-6 && candidate.y > topLeftPoint.y + 1e-6)
+      ) {
+        topLeftPoint = candidate;
+      }
+    }
+    rotatedPoint16ForCurve = p(topLeftPoint.x, topLeftPoint.y);
+
+    pointA = pointAlongLineByDistance(point38, point37, 10);
+    const intersectionPoint = horizontalIntersectionToLeft(releasePolygon, pointA);
+    if (intersectionPoint) {
+      pointA = p(
+        (pointA.x + intersectionPoint.x) / 2,
+        (pointA.y + intersectionPoint.y) / 2,
+      );
+    }
+
+    labels.push({
+      id: "label-a",
+      text: "a",
+      x: round2(pointA.x),
+      y: round2(pointA.y),
+      color: "currentColor",
+    });
+
+    const releaseTopRightPoint = findTopRightPoint(releasePolygon);
+    if (releaseTopRightPoint) {
+      backShoulderDartOtherUpperTip = p(releaseTopRightPoint.x, releaseTopRightPoint.y);
+      addPolyline(
+        "back-shoulder-dart-combined",
+        [releaseTopRightPoint, pointA, point38],
+        {
+          kind: "pattern",
+          strokeWidth: 0.24,
+        },
+      );
+      combinedBackShoulderDartDrawn = true;
+    }
+  }
+
+  const backArmholeUpperTip = rotatedPoint16ForCurve ?? point16;
+  if (backArmholeUpperTip && backShoulderDartOtherUpperTip) {
+    addLine(
+      "cleanup-back-armhole-tip-to-left-dart-leg",
+      backArmholeUpperTip,
+      backShoulderDartOtherUpperTip,
+      {
+        kind: "cleanup",
+        strokeWidth: 0.24,
+      },
+    );
   }
 
   if (point35 && point37) {
+    addLine("back-shoulder-dart-base", point37, point35, {
+      kind: "pattern",
+      strokeWidth: 0.24,
+    });
+  }
+
+  if (!combinedBackShoulderDartDrawn && point35 && point37) {
     addLine("back-armhole-dart-line-35-37", point35, point37, {
       kind: "pattern",
       strokeWidth: 0.24,
     });
   }
 
-  if (point36 && point37) {
+  if (!combinedBackShoulderDartDrawn && point36 && point37) {
     addLine("back-armhole-dart-line-36-37", point36, point37, {
       kind: "pattern",
       strokeWidth: 0.24,
     });
   }
 
+  if (point36) {
+    const startHandle36 = p(point36.x, point36.y + 4.1);
+
+    const vec1110 = {
+      x: point10.x - point11.x,
+      y: point10.y - point11.y,
+    };
+    const len1110 = Math.sqrt(vec1110.x * vec1110.x + vec1110.y * vec1110.y);
+    const handle11 =
+      len1110 > 1e-6
+        ? p(point11.x + (vec1110.x * 3.6) / len1110, point11.y + (vec1110.y * 3.6) / len1110)
+        : p(point11.x + 3.6, point11.y);
+
+    if (rotatedPoint16ForCurve) {
+      const handle36Control = p(point36.x + 0.1, point36.y - 4.8);
+      addMultiCubic(
+        "back-armhole-curve",
+        [
+          {
+            start: rotatedPoint16ForCurve,
+            c1: rotatedPoint16ForCurve,
+            c2: handle36Control,
+            end: point36,
+          },
+          {
+            start: point36,
+            c1: startHandle36,
+            c2: handle11,
+            end: point11,
+          },
+        ],
+        {
+          kind: "pattern",
+          strokeWidth: 0.26,
+        },
+      );
+    } else {
+      addCubic("back-armhole-curve", point36, startHandle36, handle11, point11, {
+        kind: "pattern",
+        strokeWidth: 0.26,
+      });
+    }
+  } else if (backShoulderEnd && point17 && point17a) {
+    const fallbackCurveHandles = buildBackArmholeHandles(
+      backShoulderEnd,
+      point17,
+      point17a,
+      point11,
+      point4,
+    );
+
+    if (fallbackCurveHandles) {
+      addMultiCubic(
+        "back-armhole-curve",
+        [
+          {
+            start: backShoulderEnd,
+            c1: fallbackCurveHandles.startHandle,
+            c2: fallbackCurveHandles.midIncoming,
+            end: point17,
+          },
+          {
+            start: point17,
+            c1: fallbackCurveHandles.midOutgoing,
+            c2: fallbackCurveHandles.endIncoming,
+            end: point11,
+          },
+        ],
+        {
+          kind: "pattern",
+          strokeWidth: 0.26,
+        },
+      );
+    }
+  }
+
   const bustIntersectionY = point4.y;
   const sideShareEach = measurements.waistSideShare / 2;
   const backArmHalfShare = measurements.waistBackArmShare / 2;
   const backDartHalfShare = measurements.waistBackDartShare / 2;
+  let frontWaistIntersection: DraftPoint | null = null;
+  let backWaistIntersection: DraftPoint | null = null;
 
   if (sideShareEach > 0.001) {
-    addLine(
-      "waist-dart-front-side-left",
-      p(point12.x - sideShareEach, waistLineY),
-      p(point12.x, bustIntersectionY),
-      { kind: "pattern", strokeWidth: 0.24 },
-    );
-    addLine(
-      "waist-dart-back-side-right",
-      p(point11.x + sideShareEach, waistLineY),
-      p(point11.x, bustIntersectionY),
-      { kind: "pattern", strokeWidth: 0.24 },
-    );
+    const frontSideBase = marker40;
+    const frontSideApex = p(frontSideBase.x, bustIntersectionY);
+    const frontSideStart = p(frontSideBase.x - sideShareEach, frontSideBase.y);
+
+    if (hiDiffHalf > 0.001) {
+      const frontHipHandle = p(frontHipMarker.x, frontHipMarker.y - 5.35);
+      frontWaistIntersection =
+        intersectCubicWithHorizontalApprox(
+          frontHipMarker,
+          frontHipHandle,
+          frontSideStart,
+          frontSideStart,
+          waistLineY,
+        ) ??
+        intersectSegmentWithHorizontal(frontHipMarker, frontSideStart, waistLineY) ??
+        p(frontSideStart.x, waistLineY);
+      addMultiCubic(
+        "waist-dart-front-side-left",
+        [
+          {
+            start: frontHipMarker,
+            c1: frontHipHandle,
+            c2: frontSideStart,
+            end: frontSideStart,
+          },
+          {
+            start: frontSideStart,
+            c1: frontSideStart,
+            c2: frontSideApex,
+            end: frontSideApex,
+          },
+        ],
+        { kind: "pattern", strokeWidth: 0.24 },
+      );
+    } else {
+      addLine("waist-dart-front-side-left", frontSideStart, frontSideApex, {
+        kind: "pattern",
+        strokeWidth: 0.24,
+      });
+    }
+
+    const backSideBase = marker39;
+    const backSideApex = p(backSideBase.x, bustIntersectionY);
+    const backSideStart = p(backSideBase.x + sideShareEach, backSideBase.y);
+
+    if (hiDiffHalf > 0.001) {
+      const backHipHandle = p(backHipMarker.x, backHipMarker.y - 5.35);
+      backWaistIntersection =
+        intersectCubicWithHorizontalApprox(
+          backHipMarker,
+          backHipHandle,
+          backSideStart,
+          backSideStart,
+          waistLineY,
+        ) ??
+        intersectSegmentWithHorizontal(backHipMarker, backSideStart, waistLineY) ??
+        p(backSideStart.x, waistLineY);
+      addMultiCubic(
+        "waist-dart-back-side-right",
+        [
+          {
+            start: backHipMarker,
+            c1: backHipHandle,
+            c2: backSideStart,
+            end: backSideStart,
+          },
+          {
+            start: backSideStart,
+            c1: backSideStart,
+            c2: backSideApex,
+            end: backSideApex,
+          },
+        ],
+        { kind: "pattern", strokeWidth: 0.24 },
+      );
+    } else {
+      backWaistIntersection = p(backSideStart.x, waistLineY);
+      addLine("waist-dart-back-side-right", backSideStart, backSideApex, {
+        kind: "pattern",
+        strokeWidth: 0.24,
+      });
+    }
   }
 
   if (backArmHalfShare > 0.001) {
@@ -1623,7 +1901,7 @@ export const buildScene = (
     });
   }
 
-  addLine("back-arm-line", p(point10.x, point16 ? point16.y : topLineY), p(point10.x, hipLineY), {
+  addLine("back-arm-line", p(point10.x, point16 ? point16.y : topLineY), p(point10.x, hemLineY), {
     dashed: true,
     kind: "construction",
     strokeWidth: 0.18,
@@ -1635,6 +1913,14 @@ export const buildScene = (
   });
   addLine("front-side-line", p(point12.x, point12.y), p(point12.x, hemLineY), {
     dashed: true,
+    kind: "construction",
+    strokeWidth: 0.18,
+  });
+  addLine("front-hi-g-line", frontHipMarker, p(frontHipMarker.x, hemLineY), {
+    kind: "construction",
+    strokeWidth: 0.18,
+  });
+  addLine("back-hi-g-line", backHipMarker, p(backHipMarker.x, hemLineY), {
     kind: "construction",
     strokeWidth: 0.18,
   });
@@ -1652,15 +1938,86 @@ export const buildScene = (
     strokeWidth: 0.18,
   });
 
-  addLine("centre-front-cf", p(point14.x, point20.y), p(point14.x, hemLineY), {
+  addLine("centre-front-cf", p(point14.x, point23.y), p(point14.x, hemLineY), {
     kind: "pattern",
     strokeWidth: 0.26,
   });
 
-  addLine("front-hem-line", p(point14.x, hemLineY), point29Hem, {
+  addLine("front-hem-line", p(point3.x, hemLineY), p(point14.x, hemLineY), {
     kind: "pattern",
     strokeWidth: 0.26,
   });
+  const cleanupHemStartX = point8.x;
+  const cleanupHemEndX = point14.x;
+  const cleanupHemDir = cleanupHemStartX <= cleanupHemEndX ? 1 : -1;
+  const cleanupHemMinX = Math.min(cleanupHemStartX, cleanupHemEndX);
+  const cleanupHemMaxX = Math.max(cleanupHemStartX, cleanupHemEndX);
+  const hemCutIntervals: Array<{ min: number; max: number }> = [];
+
+  hemCutIntervals.push({
+    min: Math.min(backHipMarker.x, frontHipMarker.x),
+    max: Math.max(backHipMarker.x, frontHipMarker.x),
+  });
+
+  if (frontHiGapHemLeftX !== null && frontHiGapHemRightX !== null) {
+    hemCutIntervals.push({
+      min: Math.min(frontHiGapHemLeftX, frontHiGapHemRightX),
+      max: Math.max(frontHiGapHemLeftX, frontHiGapHemRightX),
+    });
+  }
+
+  const relevantCuts = hemCutIntervals
+    .map((interval) => ({
+      min: Math.max(cleanupHemMinX, interval.min),
+      max: Math.min(cleanupHemMaxX, interval.max),
+    }))
+    .filter((interval) => interval.max - interval.min > 1e-6)
+    .sort((a, b) => a.min - b.min);
+
+  const mergedCuts: Array<{ min: number; max: number }> = [];
+  for (const interval of relevantCuts) {
+    const last = mergedCuts[mergedCuts.length - 1];
+    if (!last || interval.min > last.max + 1e-6) {
+      mergedCuts.push({ min: interval.min, max: interval.max });
+    } else if (interval.max > last.max) {
+      last.max = interval.max;
+    }
+  }
+
+  let cursorX = cleanupHemMinX;
+  let cleanupHemSegmentIndex = 1;
+  for (const cut of mergedCuts) {
+    if (cut.min > cursorX + 1e-6) {
+      const segMinX = cursorX;
+      const segMaxX = cut.min;
+      addLine(
+        `cleanup-front-hem-line-${cleanupHemSegmentIndex}`,
+        cleanupHemDir > 0 ? p(segMinX, hemLineY) : p(segMaxX, hemLineY),
+        cleanupHemDir > 0 ? p(segMaxX, hemLineY) : p(segMinX, hemLineY),
+        {
+          kind: "cleanup",
+          strokeWidth: 0.26,
+        },
+      );
+      cleanupHemSegmentIndex += 1;
+    }
+    if (cut.max > cursorX) {
+      cursorX = cut.max;
+    }
+  }
+  if (cursorX < cleanupHemMaxX - 1e-6) {
+    const segMinX = cursorX;
+    const segMaxX = cleanupHemMaxX;
+    addLine(
+      `cleanup-front-hem-line-${cleanupHemSegmentIndex}`,
+      cleanupHemDir > 0 ? p(segMinX, hemLineY) : p(segMaxX, hemLineY),
+      cleanupHemDir > 0 ? p(segMaxX, hemLineY) : p(segMinX, hemLineY),
+      {
+        kind: "cleanup",
+        strokeWidth: 0.26,
+      },
+    );
+  }
 
   addLine("front-bust-line", point4, point12, {
     dashed: true,
@@ -1668,16 +2025,39 @@ export const buildScene = (
     strokeWidth: 0.18,
   });
 
-  const frontWaistEnd = extendLineToY(point12, point29, waistLineY);
+  const frontWaistEnd = frontWaistIntersection ?? extendLineToY(point12, point29, waistLineY);
   addLine("front-waist-line", point19, frontWaistEnd, {
     dashed: true,
     kind: "construction",
     strokeWidth: 0.18,
   });
+  addLine("cleanup-front-waist-line", point19, frontWaistEnd, {
+    dashed: true,
+    kind: "cleanup",
+    strokeWidth: 0.18,
+  });
 
-  addLine("front-hip-line", point6, point29, {
+  const backWaistEnd = backWaistIntersection ?? p(point11.x, waistLineY);
+  addLine("back-waist-line-main", point5, backWaistEnd, {
     dashed: true,
     kind: "construction",
+    strokeWidth: 0.18,
+  });
+  addLine("cleanup-7-to-back-side-seam", point7, backWaistEnd, {
+    dashed: true,
+    kind: "cleanup",
+    strokeWidth: 0.18,
+  });
+
+  const frontHipCfPoint = p(point14.x, hipLineY);
+  addLine("front-hip-line", point6, frontHipCfPoint, {
+    dashed: true,
+    kind: "construction",
+    strokeWidth: 0.18,
+  });
+  addLine("cleanup-front-hip-line", frontHipCfPoint, frontHipMarker, {
+    dashed: true,
+    kind: "cleanup",
     strokeWidth: 0.18,
   });
 
@@ -1718,7 +2098,7 @@ export const buildScene = (
   return {
     points,
     paths,
-    labels,
+    labels: [],
     markers,
     bounds: getBounds(tracked),
   };

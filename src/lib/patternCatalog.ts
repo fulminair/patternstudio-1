@@ -5,6 +5,7 @@ export type ActivePatternId =
   | "armstrong"
   | "hofenbitzer"
   | "hofenbitzerCasual"
+  | "hofenbitzerCasualShaping"
   | "hofenbitzerContouredHipGap"
   | "hofenbitzerWideSleeve"
   | "hofenbitzerTightSleeve";
@@ -56,6 +57,13 @@ export const AVAILABLE_PATTERNS: AvailablePatternDefinition[] = [
     author: "Hofenbitzer",
     label: "Hofenbitzer's Casual Bodice",
     href: "/hofenbitzer-casual",
+    units: "cm",
+  },
+  {
+    id: "hofenbitzerCasualShaping",
+    author: "Hofenbitzer",
+    label: "Hofenbitzer's Casual Bodice (Shaping)",
+    href: "/hofenbitzer-casual-shaping",
     units: "cm",
   },
   {

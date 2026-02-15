@@ -3,30 +3,29 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { TopBar } from "@/components/layout/TopBar";
 import { PatternCanvas, type CanvasInstanceScene } from "@/components/canvas/PatternCanvas";
-import { HofenbitzerContouredHipGapDraftsPanel } from "@/components/panels/HofenbitzerContouredHipGapDraftsPanel";
-import { HofenbitzerContouredHipGapMeasurementsPanel } from "@/components/panels/HofenbitzerContouredHipGapMeasurementsPanel";
-import { buildScene } from "@/patterns/hofenbitzerContouredBodiceHipGap/engine";
+import { HofenbitzerCasualShapingDraftsPanel } from "@/components/panels/HofenbitzerCasualShapingDraftsPanel";
+import { HofenbitzerCasualShapingMeasurementsPanel } from "@/components/panels/HofenbitzerCasualShapingMeasurementsPanel";
+import { buildScene } from "@/patterns/hofenbitzerCasualShapingBodice/engine";
 import { exportSvg } from "@/lib/exportSvg";
 import {
   mergeEffectiveMeasurements,
   selectProjectState,
-  useHofenbitzerContouredHipGapStore,
-} from "@/lib/hofenbitzerContouredHipGapStore";
-import { decodeHofenbitzerContouredHipGapProjectState } from "@/lib/share/hofenbitzerContouredHipGapDecode";
-import { encodeHofenbitzerContouredHipGapProjectState } from "@/lib/share/hofenbitzerContouredHipGapEncode";
+  useHofenbitzerCasualShapingStore,
+} from "@/lib/hofenbitzerCasualShapingStore";
+import { decodeHofenbitzerCasualShapingProjectState } from "@/lib/share/hofenbitzerCasualShapingDecode";
+import { encodeHofenbitzerCasualShapingProjectState } from "@/lib/share/hofenbitzerCasualShapingEncode";
 
-export default function HofenbitzerContouredHipGapPage() {
+export default function HofenbitzerCasualShapingPage() {
   const hasHydratedFromQuery = useRef(false);
   const svgRef = useRef<SVGSVGElement | null>(null);
   const [shareCopied, setShareCopied] = useState(false);
 
-  const base = useHofenbitzerContouredHipGapStore((state) => state.base);
-  const instances = useHofenbitzerContouredHipGapStore((state) => state.instances);
-  const ui = useHofenbitzerContouredHipGapStore((state) => state.ui);
-  const geometryRevision = useHofenbitzerContouredHipGapStore((state) => state.geometryRevision);
-  const hydrateFromProject = useHofenbitzerContouredHipGapStore((state) => state.hydrateFromProject);
-  const setUiToggle = useHofenbitzerContouredHipGapStore((state) => state.setUiToggle);
-  const setLineStrokeWidth = useHofenbitzerContouredHipGapStore((state) => state.setLineStrokeWidth);
+  const base = useHofenbitzerCasualShapingStore((state) => state.base);
+  const instances = useHofenbitzerCasualShapingStore((state) => state.instances);
+  const ui = useHofenbitzerCasualShapingStore((state) => state.ui);
+  const hydrateFromProject = useHofenbitzerCasualShapingStore((state) => state.hydrateFromProject);
+  const setUiToggle = useHofenbitzerCasualShapingStore((state) => state.setUiToggle);
+  const setLineStrokeWidth = useHofenbitzerCasualShapingStore((state) => state.setLineStrokeWidth);
 
   const scenes = useMemo<CanvasInstanceScene[]>(() => {
     return instances.map((instance) => {
@@ -57,7 +56,7 @@ export default function HofenbitzerContouredHipGapPage() {
       return;
     }
 
-    const decoded = decodeHofenbitzerContouredHipGapProjectState(encoded);
+    const decoded = decodeHofenbitzerCasualShapingProjectState(encoded);
     if (decoded) {
       hydrateFromProject(decoded);
     }
@@ -69,15 +68,15 @@ export default function HofenbitzerContouredHipGapPage() {
     }
 
     exportSvg(svgRef.current, {
-      filename: "patternstudio-hofenbitzer-contoured-bodice-hip-gap.svg",
+      filename: "patternstudio-hofenbitzer-casual-shaping-bodice.svg",
       selectedOnly: ui.exportSelectedOnly,
       selectedInstanceId: ui.selectedInstanceId,
     });
   };
 
   const handleShare = useCallback(async () => {
-    const state = selectProjectState(useHofenbitzerContouredHipGapStore.getState());
-    const encoded = encodeHofenbitzerContouredHipGapProjectState(state);
+    const state = selectProjectState(useHofenbitzerCasualShapingStore.getState());
+    const encoded = encodeHofenbitzerCasualShapingProjectState(state);
     const url = `${window.location.origin}${window.location.pathname}?s=${encoded}`;
 
     try {
@@ -93,7 +92,7 @@ export default function HofenbitzerContouredHipGapPage() {
   return (
     <div className="flex min-h-screen flex-col bg-slate-100 text-slate-900">
       <TopBar
-        activePattern="hofenbitzerContouredHipGap"
+        activePattern="hofenbitzerCasualShaping"
         onShare={handleShare}
         onExport={handleExport}
         isShareCopied={shareCopied}
@@ -105,8 +104,8 @@ export default function HofenbitzerContouredHipGapPage() {
         <aside className="left-sidebar w-full shrink-0 border-b border-slate-200 bg-slate-50 lg:w-[520px] lg:border-b-0 lg:border-r xl:w-[560px]">
           <div className="h-full overflow-y-auto p-4 lg:p-5">
             <div className="space-y-4">
-              <HofenbitzerContouredHipGapMeasurementsPanel />
-              <HofenbitzerContouredHipGapDraftsPanel />
+              <HofenbitzerCasualShapingMeasurementsPanel />
+              <HofenbitzerCasualShapingDraftsPanel />
             </div>
           </div>
         </aside>
@@ -120,19 +119,8 @@ export default function HofenbitzerContouredHipGapPage() {
             showMarkers={ui.showMarkers}
             showCleanUp={ui.showCleanUp}
             lineStrokeWidth={ui.lineStrokeWidth}
-            editResetVersion={geometryRevision}
             cleanupConfig={{
               mode: "patternOnly",
-              excludePathIds: [
-                "front-shoulder-line",
-                "front-shoulder-dart-triangle",
-                "front-hem-line",
-                "back-shoulder-line",
-                "back-armhole-dart-release-solid",
-                "back-shoulder-dart-base",
-                "back-armhole-dart-line-35-37",
-                "back-armhole-dart-line-36-37",
-              ],
             }}
             onToggleGrid={(checked) => setUiToggle("showGrid", checked)}
             onToggleLabels={(checked) => setUiToggle("showLabels", checked)}

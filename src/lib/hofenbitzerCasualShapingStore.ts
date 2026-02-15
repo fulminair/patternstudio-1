@@ -6,14 +6,14 @@ import {
   buildScene,
   computeDerived,
   getDefaultBaseMeasurements,
-} from "@/patterns/hofenbitzerContouredBodiceHipGap/engine";
+} from "@/patterns/hofenbitzerCasualShapingBodice/engine";
 import type {
-  HofenbitzerContouredHipGapBaseMeasurements,
-  HofenbitzerContouredHipGapEffectiveMeasurements,
-  HofenbitzerContouredHipGapPatternInstance,
-  HofenbitzerContouredHipGapProjectState,
-  HofenbitzerContouredHipGapProjectUiState,
-} from "@/patterns/hofenbitzerContouredBodiceHipGap/types";
+  HofenbitzerCasualShapingBaseMeasurements,
+  HofenbitzerCasualShapingEffectiveMeasurements,
+  HofenbitzerCasualShapingPatternInstance,
+  HofenbitzerCasualShapingProjectState,
+  HofenbitzerCasualShapingProjectUiState,
+} from "@/patterns/hofenbitzerCasualShapingBodice/types";
 import type { PatternScene } from "@/patterns/types";
 
 const DRAFT_COLORS = [
@@ -38,8 +38,8 @@ const defaultBase = getDefaultBaseMeasurements();
 
 const createInstance = (
   index: number,
-  overrides: HofenbitzerContouredHipGapPatternInstance["overrides"] = {},
-): HofenbitzerContouredHipGapPatternInstance => ({
+  overrides: HofenbitzerCasualShapingPatternInstance["overrides"] = {},
+): HofenbitzerCasualShapingPatternInstance => ({
   id: createId(),
   name: `Draft ${index + 1}`,
   color: DRAFT_COLORS[index % DRAFT_COLORS.length],
@@ -49,7 +49,7 @@ const createInstance = (
 
 const initialInstance = createInstance(0);
 
-const defaultUi: HofenbitzerContouredHipGapProjectUiState = {
+const defaultUi: HofenbitzerCasualShapingProjectUiState = {
   selectedInstanceId: initialInstance.id,
   showGrid: true,
   showLabels: true,
@@ -59,7 +59,7 @@ const defaultUi: HofenbitzerContouredHipGapProjectUiState = {
   lineStrokeWidth: 1,
 };
 
-const numericKeys: Array<keyof HofenbitzerContouredHipGapBaseMeasurements> = [
+const numericKeys: Array<keyof HofenbitzerCasualShapingBaseMeasurements> = [
   "FitIndex",
   "AhD",
   "AhDEase",
@@ -87,12 +87,7 @@ const numericKeys: Array<keyof HofenbitzerContouredHipGapBaseMeasurements> = [
   "ShA",
   "BrD",
   "ShoulderDifference",
-  "BackContour",
-  "BackShoulderDartIntake",
-  "FrontWaistDartAddition",
-  "FrontDartLength",
-  "MainBackDartLength",
-  "SecondBackDartLength",
+  "WaistShaping",
 ];
 
 const sanitizeNumber = (value: number, fallback: number): number =>
@@ -116,10 +111,10 @@ const sanitizeColor = (value: string, fallback: string): string => {
 type UiBooleanKey = "showGrid" | "showLabels" | "showMarkers" | "showCleanUp" | "exportSelectedOnly";
 
 export const mergeEffectiveMeasurements = (
-  base: HofenbitzerContouredHipGapBaseMeasurements,
-  instance: HofenbitzerContouredHipGapPatternInstance,
-): HofenbitzerContouredHipGapEffectiveMeasurements => {
-  const merged: HofenbitzerContouredHipGapBaseMeasurements = {
+  base: HofenbitzerCasualShapingBaseMeasurements,
+  instance: HofenbitzerCasualShapingPatternInstance,
+): HofenbitzerCasualShapingEffectiveMeasurements => {
+  const merged: HofenbitzerCasualShapingBaseMeasurements = {
     ...base,
     ...instance.overrides,
   };
@@ -130,8 +125,7 @@ export const mergeEffectiveMeasurements = (
   };
 };
 
-export type HofenbitzerContouredHipGapStoreState = HofenbitzerContouredHipGapProjectState & {
-  geometryRevision: number;
+export type HofenbitzerCasualShapingStoreState = HofenbitzerCasualShapingProjectState & {
   setSelectedInstance: (id: string) => void;
   addDuplicate: () => void;
   removeInstance: (id: string) => void;
@@ -139,23 +133,22 @@ export type HofenbitzerContouredHipGapStoreState = HofenbitzerContouredHipGapPro
   setInstanceColor: (id: string, color: string) => void;
   setOverride: (
     id: string,
-    key: keyof HofenbitzerContouredHipGapBaseMeasurements,
+    key: keyof HofenbitzerCasualShapingBaseMeasurements,
     value: number | undefined,
   ) => void;
   applyFitProfileToDraft: (id: string, fitIndex: number) => void;
   resetOverrides: (id: string) => void;
   setUiToggle: (key: UiBooleanKey, value: boolean) => void;
   setLineStrokeWidth: (value: number) => void;
-  hydrateFromProject: (next: HofenbitzerContouredHipGapProjectState) => void;
-  getEffectiveMeasurements: (id: string) => HofenbitzerContouredHipGapEffectiveMeasurements | null;
+  hydrateFromProject: (next: HofenbitzerCasualShapingProjectState) => void;
+  getEffectiveMeasurements: (id: string) => HofenbitzerCasualShapingEffectiveMeasurements | null;
   getSceneForInstance: (id: string) => PatternScene | null;
 };
 
-export const useHofenbitzerContouredHipGapStore = create<HofenbitzerContouredHipGapStoreState>((set, get) => ({
+export const useHofenbitzerCasualShapingStore = create<HofenbitzerCasualShapingStoreState>((set, get) => ({
   base: defaultBase,
   instances: [initialInstance],
   ui: defaultUi,
-  geometryRevision: 0,
 
   setSelectedInstance: (id) => {
     set((state) => ({
@@ -261,7 +254,7 @@ export const useHofenbitzerContouredHipGapStore = create<HofenbitzerContouredHip
           return instance;
         }
 
-        const merged: HofenbitzerContouredHipGapBaseMeasurements = {
+        const merged: HofenbitzerCasualShapingBaseMeasurements = {
           ...state.base,
           ...instance.overrides,
         };
@@ -280,7 +273,6 @@ export const useHofenbitzerContouredHipGapStore = create<HofenbitzerContouredHip
             AGEase: withFit.AGEase,
             BrGEase: withFit.BrGEase,
             ShGEase: withFit.ShGEase,
-            FrontWaistDartAddition: withFit.FrontWaistDartAddition,
           },
         };
       }),
@@ -288,24 +280,16 @@ export const useHofenbitzerContouredHipGapStore = create<HofenbitzerContouredHip
   },
 
   resetOverrides: (id) => {
-    set((state) => {
-      let didReset = false;
-      const nextInstances = state.instances.map((instance) => {
-        if (instance.id !== id) {
-          return instance;
-        }
-        didReset = true;
-        return {
-          ...instance,
-          overrides: {},
-        };
-      });
-
-      return {
-        instances: nextInstances,
-        geometryRevision: didReset ? state.geometryRevision + 1 : state.geometryRevision,
-      };
-    });
+    set((state) => ({
+      instances: state.instances.map((instance) =>
+        instance.id === id
+          ? {
+              ...instance,
+              overrides: {},
+            }
+          : instance,
+      ),
+    }));
   },
 
   setUiToggle: (key, value) => {
@@ -331,7 +315,7 @@ export const useHofenbitzerContouredHipGapStore = create<HofenbitzerContouredHip
       const instances = next.instances.length > 0 ? next.instances : [createInstance(0)];
       const selectedExists = instances.some((instance) => instance.id === next.ui.selectedInstanceId);
 
-      const normalizedBase: HofenbitzerContouredHipGapBaseMeasurements = {
+      const normalizedBase: HofenbitzerCasualShapingBaseMeasurements = {
         ...defaultBase,
       };
 
@@ -377,8 +361,8 @@ export const useHofenbitzerContouredHipGapStore = create<HofenbitzerContouredHip
 }));
 
 export const selectProjectState = (
-  state: HofenbitzerContouredHipGapStoreState,
-): HofenbitzerContouredHipGapProjectState => ({
+  state: HofenbitzerCasualShapingStoreState,
+): HofenbitzerCasualShapingProjectState => ({
   base: state.base,
   instances: state.instances,
   ui: state.ui,

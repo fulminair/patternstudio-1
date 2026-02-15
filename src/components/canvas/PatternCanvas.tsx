@@ -28,6 +28,7 @@ type PatternCanvasProps = {
   showMarkers: boolean;
   showCleanUp: boolean;
   lineStrokeWidth: number;
+  editResetVersion?: number;
   onToggleGrid: (checked: boolean) => void;
   onToggleLabels: (checked: boolean) => void;
   onToggleMarkers: (checked: boolean) => void;
@@ -149,6 +150,187 @@ const DEFAULT_TRACE_PATH_SEGMENTS = [
   ["20", "26", "27", "30"],
 ] as const;
 
+type EditablePathCommandType = "M" | "L" | "C" | "Z";
+
+type EditablePathCommand = {
+  type: EditablePathCommandType;
+  values: number[];
+};
+
+type EditablePathHandle = {
+  id: string;
+  commandIndex: number;
+  valueOffset: number;
+  x: number;
+  y: number;
+  role: "anchor" | "control";
+};
+
+type EditablePathGuide = {
+  id: string;
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
+};
+
+const EDITABLE_PATH_ARITY: Record<EditablePathCommandType, number> = {
+  M: 2,
+  L: 2,
+  C: 6,
+  Z: 0,
+};
+
+const EDITABLE_PATH_KEY_SEPARATOR = "::";
+
+const makeEditablePathKey = (instanceId: string, pathId: string): string =>
+  `${instanceId}${EDITABLE_PATH_KEY_SEPARATOR}${pathId}`;
+
+const splitEditablePathKey = (pathKey: string): { instanceId: string; pathId: string } => {
+  const separatorIndex = pathKey.indexOf(EDITABLE_PATH_KEY_SEPARATOR);
+  if (separatorIndex < 0) {
+    return { instanceId: pathKey, pathId: "" };
+  }
+  return {
+    instanceId: pathKey.slice(0, separatorIndex),
+    pathId: pathKey.slice(separatorIndex + EDITABLE_PATH_KEY_SEPARATOR.length),
+  };
+};
+
+const parseEditablePathCommands = (d: string): EditablePathCommand[] | null => {
+  const tokens = d.match(/[A-Za-z]|[-+]?(?:\d+\.?\d*|\.\d+)(?:e[-+]?\d+)?/g);
+  if (!tokens || tokens.length === 0) {
+    return null;
+  }
+
+  const commands: EditablePathCommand[] = [];
+  let index = 0;
+  while (index < tokens.length) {
+    const commandToken = tokens[index].toUpperCase() as EditablePathCommandType;
+    if (!(commandToken in EDITABLE_PATH_ARITY)) {
+      return null;
+    }
+    index += 1;
+
+    const arity = EDITABLE_PATH_ARITY[commandToken];
+    const values: number[] = [];
+    for (let valueIndex = 0; valueIndex < arity; valueIndex += 1) {
+      if (index >= tokens.length) {
+        return null;
+      }
+      const parsed = Number(tokens[index]);
+      if (!Number.isFinite(parsed)) {
+        return null;
+      }
+      values.push(parsed);
+      index += 1;
+    }
+
+    commands.push({
+      type: commandToken,
+      values,
+    });
+  }
+
+  return commands.length > 0 ? commands : null;
+};
+
+const serializeEditablePathCommands = (commands: EditablePathCommand[]): string => {
+  const formatNumber = (value: number): string => {
+    const rounded = Math.round(value * 1000) / 1000;
+    return String(rounded);
+  };
+
+  return commands
+    .map((command) =>
+      command.values.length === 0
+        ? command.type
+        : `${command.type} ${command.values.map(formatNumber).join(" ")}`,
+    )
+    .join(" ");
+};
+
+const extractEditablePathGeometry = (commands: EditablePathCommand[]): {
+  handles: EditablePathHandle[];
+  guides: EditablePathGuide[];
+} => {
+  const handles: EditablePathHandle[] = [];
+  const guides: EditablePathGuide[] = [];
+  let currentAnchor: { x: number; y: number } | null = null;
+
+  for (let commandIndex = 0; commandIndex < commands.length; commandIndex += 1) {
+    const command = commands[commandIndex];
+    if (command.type === "M" || command.type === "L") {
+      const x = command.values[0];
+      const y = command.values[1];
+      handles.push({
+        id: `h-${commandIndex}-0`,
+        commandIndex,
+        valueOffset: 0,
+        x,
+        y,
+        role: "anchor",
+      });
+      currentAnchor = { x, y };
+      continue;
+    }
+
+    if (command.type === "C") {
+      const c1x = command.values[0];
+      const c1y = command.values[1];
+      const c2x = command.values[2];
+      const c2y = command.values[3];
+      const endX = command.values[4];
+      const endY = command.values[5];
+
+      handles.push({
+        id: `h-${commandIndex}-0`,
+        commandIndex,
+        valueOffset: 0,
+        x: c1x,
+        y: c1y,
+        role: "control",
+      });
+      handles.push({
+        id: `h-${commandIndex}-2`,
+        commandIndex,
+        valueOffset: 2,
+        x: c2x,
+        y: c2y,
+        role: "control",
+      });
+      handles.push({
+        id: `h-${commandIndex}-4`,
+        commandIndex,
+        valueOffset: 4,
+        x: endX,
+        y: endY,
+        role: "anchor",
+      });
+
+      if (currentAnchor) {
+        guides.push({
+          id: `g-${commandIndex}-start`,
+          x1: currentAnchor.x,
+          y1: currentAnchor.y,
+          x2: c1x,
+          y2: c1y,
+        });
+      }
+      guides.push({
+        id: `g-${commandIndex}-end`,
+        x1: endX,
+        y1: endY,
+        x2: c2x,
+        y2: c2y,
+      });
+      currentAnchor = { x: endX, y: endY };
+    }
+  }
+
+  return { handles, guides };
+};
+
 const buildCleanupTracePath = (points: PatternScene["points"]): string | null => {
   // In cleanup mode we trace the requested key points and rely on dedicated curve paths for neck/armhole arcs.
   for (const segment of DEFAULT_TRACE_PATH_SEGMENTS) {
@@ -190,6 +372,7 @@ export function PatternCanvas({
   showMarkers,
   showCleanUp,
   lineStrokeWidth,
+  editResetVersion = 0,
   onToggleGrid,
   onToggleLabels,
   onToggleMarkers,
@@ -211,6 +394,17 @@ export function PatternCanvas({
     x: null,
     y: null,
   });
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [pathEdits, setPathEdits] = useState<Record<string, string>>({});
+  const [activePathKey, setActivePathKey] = useState<string | null>(null);
+  const isEditModeRef = useRef(false);
+  const previousPathLookupRef = useRef<Record<string, string>>({});
+  const editDragRef = useRef<{
+    pointerId: number;
+    pathKey: string;
+    commandIndex: number;
+    valueOffset: number;
+  } | null>(null);
 
   const targetScenes = useMemo(() => {
     const visible = scenes.filter((scene) => scene.visible);
@@ -226,6 +420,38 @@ export function PatternCanvas({
     }
     return visibleScenes[0]?.instanceId ?? null;
   }, [selectedInstanceId, visibleScenes]);
+
+  const pathLookup = useMemo(() => {
+    const lookup: Record<string, string> = {};
+    for (const scene of scenes) {
+      for (const path of scene.scene.paths) {
+        lookup[makeEditablePathKey(scene.instanceId, path.id)] = path.d;
+      }
+    }
+    return lookup;
+  }, [scenes]);
+
+  const activePathInstanceId = useMemo(() => {
+    if (!activePathKey) {
+      return null;
+    }
+    return splitEditablePathKey(activePathKey).instanceId;
+  }, [activePathKey]);
+
+  const activePathGeometry = useMemo(() => {
+    if (!isEditMode || !activePathKey) {
+      return null;
+    }
+    const activePathD = pathEdits[activePathKey] ?? pathLookup[activePathKey];
+    if (!activePathD) {
+      return null;
+    }
+    const commands = parseEditablePathCommands(activePathD);
+    if (!commands) {
+      return null;
+    }
+    return extractEditablePathGeometry(commands);
+  }, [isEditMode, activePathKey, pathEdits, pathLookup]);
 
   const labelTargetId = useMemo(() => {
     if (
@@ -277,6 +503,75 @@ export function PatternCanvas({
   }, [draftOffsets]);
 
   useEffect(() => {
+    isEditModeRef.current = isEditMode;
+  }, [isEditMode]);
+
+  useEffect(() => {
+    if (!isEditMode) {
+      setActivePathKey(null);
+      editDragRef.current = null;
+      return;
+    }
+    if (showCleanUp) {
+      onToggleCleanUp(false);
+    }
+  }, [isEditMode, onToggleCleanUp, showCleanUp]);
+
+  useEffect(() => {
+    setPathEdits((prev) => (Object.keys(prev).length > 0 ? {} : prev));
+    setActivePathKey(null);
+    editDragRef.current = null;
+  }, [editResetVersion]);
+
+  useEffect(() => {
+    const previousPathLookup = previousPathLookupRef.current;
+
+    setPathEdits((prevEdits) => {
+      let changed = false;
+      const nextEdits: Record<string, string> = {};
+
+      for (const [pathKey, editedPathD] of Object.entries(prevEdits)) {
+        const nextGeneratedPathD = pathLookup[pathKey];
+        const previousGeneratedPathD = previousPathLookup[pathKey];
+
+        if (!nextGeneratedPathD) {
+          changed = true;
+          continue;
+        }
+
+        if (
+          typeof previousGeneratedPathD === "string" &&
+          nextGeneratedPathD !== previousGeneratedPathD
+        ) {
+          changed = true;
+          continue;
+        }
+
+        nextEdits[pathKey] = editedPathD;
+      }
+
+      return changed ? nextEdits : prevEdits;
+    });
+
+    if (!activePathKey) {
+      previousPathLookupRef.current = pathLookup;
+      return;
+    }
+
+    const nextActivePathD = pathLookup[activePathKey];
+    const previousActivePathD = previousPathLookup[activePathKey];
+    if (
+      !nextActivePathD ||
+      (typeof previousActivePathD === "string" && nextActivePathD !== previousActivePathD)
+    ) {
+      setActivePathKey(null);
+      editDragRef.current = null;
+    }
+
+    previousPathLookupRef.current = pathLookup;
+  }, [activePathKey, pathLookup]);
+
+  useEffect(() => {
     const svgElement = svgRef.current;
     if (!svgElement || !viewportRef.current) {
       return;
@@ -287,6 +582,9 @@ export function PatternCanvas({
       .filter((event) => {
         if (event.type === "wheel") {
           return true;
+        }
+        if (isEditModeRef.current) {
+          return false;
         }
         if (event.type === "mousedown") {
           return event.button === 0;
@@ -342,10 +640,17 @@ export function PatternCanvas({
   const handleCleanUpToggle = (checked: boolean) => {
     onToggleCleanUp(checked);
     if (checked) {
+      setIsEditMode(false);
+      setActivePathKey(null);
+      editDragRef.current = null;
       onToggleGrid(false);
       onToggleLabels(false);
       onToggleMarkers(false);
     }
+  };
+
+  const handleEditModeToggle = (checked: boolean) => {
+    setIsEditMode(checked);
   };
 
   const markerTextSize = (text: string): number => {
@@ -481,6 +786,11 @@ export function PatternCanvas({
     event: ReactPointerEvent<SVGGElement>,
     instanceId: string,
   ) => {
+    if (isEditMode) {
+      setActivePathKey(null);
+      return;
+    }
+
     if (draggableInstanceId !== instanceId || event.button !== 0) {
       return;
     }
@@ -568,13 +878,134 @@ export function PatternCanvas({
     setSnapGuides({ x: null, y: null });
   };
 
+  const handlePathPointerDown = (
+    event: ReactPointerEvent<SVGPathElement>,
+    instanceId: string,
+    pathId: string,
+  ) => {
+    if (!isEditMode || event.button !== 0) {
+      return;
+    }
+    event.preventDefault();
+    event.stopPropagation();
+    setActivePathKey(makeEditablePathKey(instanceId, pathId));
+  };
+
+  const handlePathHandlePointerDown = (
+    event: ReactPointerEvent<SVGCircleElement>,
+    pathKey: string,
+    commandIndex: number,
+    valueOffset: number,
+  ) => {
+    if (!isEditMode || event.button !== 0) {
+      return;
+    }
+    event.preventDefault();
+    event.stopPropagation();
+    setActivePathKey(pathKey);
+    editDragRef.current = {
+      pointerId: event.pointerId,
+      pathKey,
+      commandIndex,
+      valueOffset,
+    };
+    if (svgRef.current) {
+      svgRef.current.setPointerCapture(event.pointerId);
+    }
+  };
+
+  const handleSvgPointerDown = (event: ReactPointerEvent<SVGSVGElement>) => {
+    if (!isEditMode) {
+      return;
+    }
+    if (event.target === event.currentTarget) {
+      setActivePathKey(null);
+    }
+  };
+
+  const handleSvgPointerMove = (event: ReactPointerEvent<SVGSVGElement>) => {
+    const dragState = editDragRef.current;
+    if (!dragState || dragState.pointerId !== event.pointerId) {
+      return;
+    }
+
+    const nextPoint = getWorldPoint(event.clientX, event.clientY);
+    if (!nextPoint) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    setPathEdits((prev) => {
+      const sourcePathD = prev[dragState.pathKey] ?? pathLookup[dragState.pathKey];
+      if (!sourcePathD) {
+        return prev;
+      }
+
+      const commands = parseEditablePathCommands(sourcePathD);
+      if (!commands) {
+        return prev;
+      }
+
+      const targetCommand = commands[dragState.commandIndex];
+      if (!targetCommand || dragState.valueOffset + 1 >= targetCommand.values.length) {
+        return prev;
+      }
+
+      const { instanceId } = splitEditablePathKey(dragState.pathKey);
+      const instanceOffset = draftOffsetsRef.current[instanceId] ?? { x: 0, y: 0 };
+      const localPoint = {
+        x: nextPoint.x - instanceOffset.x,
+        y: nextPoint.y - instanceOffset.y,
+      };
+
+      const nextX = Math.round(localPoint.x * 1000) / 1000;
+      const nextY = Math.round(localPoint.y * 1000) / 1000;
+      if (
+        Math.abs(targetCommand.values[dragState.valueOffset] - nextX) < 0.0005 &&
+        Math.abs(targetCommand.values[dragState.valueOffset + 1] - nextY) < 0.0005
+      ) {
+        return prev;
+      }
+
+      targetCommand.values[dragState.valueOffset] = nextX;
+      targetCommand.values[dragState.valueOffset + 1] = nextY;
+      const nextPathD = serializeEditablePathCommands(commands);
+
+      return {
+        ...prev,
+        [dragState.pathKey]: nextPathD,
+      };
+    });
+  };
+
+  const handleSvgPointerUp = (event: ReactPointerEvent<SVGSVGElement>) => {
+    const dragState = editDragRef.current;
+    if (!dragState || dragState.pointerId !== event.pointerId) {
+      return;
+    }
+    event.preventDefault();
+    event.stopPropagation();
+    if (svgRef.current?.hasPointerCapture(event.pointerId)) {
+      svgRef.current.releasePointerCapture(event.pointerId);
+    }
+    editDragRef.current = null;
+  };
+
   return (
     <div className="relative h-full w-full overflow-hidden rounded-xl border border-slate-200 bg-gradient-to-br from-slate-50 to-slate-100">
       <svg
         ref={svgRef}
         viewBox={viewBoxFromBounds(paddedBounds)}
         preserveAspectRatio="xMinYMin meet"
-        className="h-full w-full cursor-grab select-none touch-none active:cursor-grabbing"
+        onPointerDown={handleSvgPointerDown}
+        onPointerMove={handleSvgPointerMove}
+        onPointerUp={handleSvgPointerUp}
+        onPointerCancel={handleSvgPointerUp}
+        className={`h-full w-full select-none touch-none ${
+          isEditMode ? "cursor-crosshair" : "cursor-grab active:cursor-grabbing"
+        }`}
       >
         <g ref={viewportRef}>
           {showGrid ? (
@@ -672,8 +1103,8 @@ export function PatternCanvas({
                     height={Math.max(1, instance.scene.bounds.maxY - instance.scene.bounds.minY)}
                     fill="transparent"
                     stroke="none"
-                    pointerEvents={isDraggable ? "all" : "none"}
-                    style={{ cursor: isDraggable ? "grab" : "default" }}
+                    pointerEvents={isDraggable && !isEditMode ? "all" : "none"}
+                    style={{ cursor: isDraggable && !isEditMode ? "grab" : "default" }}
                   />
 
                   {cleanupTraceD ? (
@@ -685,16 +1116,32 @@ export function PatternCanvas({
                     />
                   ) : null}
 
-                  {visiblePaths.map((path) => (
-                    <path
-                      key={`${instance.instanceId}-${path.id}`}
-                      d={path.d}
-                      stroke={path.stroke}
-                      strokeWidth={lineStrokeWidth}
-                      strokeDasharray={showCleanUp ? undefined : path.dashed ? "16 9" : undefined}
-                      vectorEffect="non-scaling-stroke"
-                    />
-                  ))}
+                  {visiblePaths.map((path) => {
+                    const pathKey = makeEditablePathKey(instance.instanceId, path.id);
+                    const renderedPathD = pathEdits[pathKey] ?? path.d;
+                    const isActivePath = isEditMode && activePathKey === pathKey;
+                    const isEditablePath = isEditMode;
+                    const renderedStroke = isEditMode
+                      ? isActivePath
+                        ? "#000000"
+                        : "#111111"
+                      : path.stroke;
+
+                    return (
+                      <path
+                        key={`${instance.instanceId}-${path.id}`}
+                        d={renderedPathD}
+                        stroke={renderedStroke}
+                        strokeWidth={isActivePath ? lineStrokeWidth + 0.16 : lineStrokeWidth}
+                        strokeDasharray={path.dashed ? "16 9" : undefined}
+                        vectorEffect="non-scaling-stroke"
+                        onPointerDown={(event) =>
+                          handlePathPointerDown(event, instance.instanceId, path.id)
+                        }
+                        style={isEditablePath ? { cursor: "pointer" } : undefined}
+                      />
+                    );
+                  })}
 
                   {showMarkers
                     ? visibleMarkers.map((marker) => {
@@ -754,6 +1201,57 @@ export function PatternCanvas({
                         </text>
                       ))
                     : null}
+
+                  {isEditMode &&
+                  activePathKey &&
+                  activePathGeometry &&
+                  activePathInstanceId === instance.instanceId ? (
+                    <g pointerEvents="none">
+                      {activePathGeometry.guides.map((guide) => (
+                        <line
+                          key={`${instance.instanceId}-${guide.id}`}
+                          x1={guide.x1}
+                          y1={guide.y1}
+                          x2={guide.x2}
+                          y2={guide.y2}
+                          stroke="#0f172a"
+                          strokeOpacity={0.45}
+                          strokeWidth={0.07}
+                          strokeDasharray="1.2 1.2"
+                          vectorEffect="non-scaling-stroke"
+                        />
+                      ))}
+                    </g>
+                  ) : null}
+
+                  {isEditMode &&
+                  activePathKey &&
+                  activePathGeometry &&
+                  activePathInstanceId === instance.instanceId ? (
+                    <g>
+                      {activePathGeometry.handles.map((handle) => (
+                        <circle
+                          key={`${instance.instanceId}-${handle.id}`}
+                          cx={handle.x}
+                          cy={handle.y}
+                          r={handle.role === "anchor" ? 0.28 : 0.22}
+                          fill="#000000"
+                          stroke="#000000"
+                          strokeWidth={0.08}
+                          vectorEffect="non-scaling-stroke"
+                          style={{ cursor: "grab" }}
+                          onPointerDown={(event) =>
+                            handlePathHandlePointerDown(
+                              event,
+                              activePathKey,
+                              handle.commandIndex,
+                              handle.valueOffset,
+                            )
+                          }
+                        />
+                      ))}
+                    </g>
+                  ) : null}
                 </g>
               );
             })}
@@ -793,6 +1291,17 @@ export function PatternCanvas({
       </div>
 
       <div className="absolute right-3 top-3 space-y-1 rounded-md border border-slate-300 bg-white/90 p-2 text-xs text-slate-700 shadow-sm backdrop-blur-sm">
+        <button
+          type="button"
+          onClick={() => handleEditModeToggle(!isEditMode)}
+          className={`mb-1 w-full rounded-md border px-2 py-1 text-left text-xs font-medium ${
+            isEditMode
+              ? "border-slate-900 bg-slate-900 text-white"
+              : "border-slate-300 bg-white text-slate-800 hover:bg-slate-100"
+          }`}
+        >
+          {isEditMode ? "Edit Mode: On" : "Edit Mode: Off"}
+        </button>
         <label className="flex items-center gap-2">
           <input
             type="checkbox"
